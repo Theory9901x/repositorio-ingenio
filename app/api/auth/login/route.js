@@ -1,15 +1,29 @@
 import { NextResponse } from "next/server";
-import { sign, COOKIE } from "@/lib/auth";
+import bcrypt from "bcryptjs";
+import { getPool } from "@/lib/db";
+import { signUserId, COOKIE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req) {
-  const { password } = await req.json().catch(() => ({}));
-  if (!password || password !== process.env.ADMIN_PASSWORD) {
+  const { email, password } = await req.json().catch(() => ({}));
+  if (!email || !password) {
+    return NextResponse.json({ ok: false, error: "Faltan campos" }, { status: 400 });
+  }
+  const pool = getPool();
+  const [[user]] = await pool.query(
+    "SELECT id, password_hash FROM users WHERE email=?",
+    [email.toLowerCase().trim()]
+  );
+  if (!user) {
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+  const match = await bcrypt.compare(password, user.password_hash);
+  if (!match) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(COOKIE, sign(), {
+  res.cookies.set(COOKIE, signUserId(user.id), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

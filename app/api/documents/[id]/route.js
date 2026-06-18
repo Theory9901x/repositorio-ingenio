@@ -1,5 +1,5 @@
 import { getPool } from "@/lib/db";
-import { isAuthed } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
@@ -14,7 +14,8 @@ async function safeUnlink(stored) {
 }
 
 export async function PUT(req, { params }) {
-  if (!isAuthed()) return Response.json({ error: "No autorizado" }, { status: 401 });
+  const me = await getCurrentUser();
+  if (!me?.isAdmin) return Response.json({ error: "No autorizado" }, { status: 401 });
   const id = Number(params.id);
   const pool = getPool();
   const fd = await req.formData();
@@ -55,7 +56,8 @@ export async function PUT(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
-  if (!isAuthed()) return Response.json({ error: "No autorizado" }, { status: 401 });
+  const me = await getCurrentUser();
+  if (!me?.isAdmin) return Response.json({ error: "No autorizado" }, { status: 401 });
   const pool = getPool();
   const [[doc]] = await pool.query("SELECT file_path FROM documents WHERE id=?", [Number(params.id)]);
   await pool.query("DELETE FROM documents WHERE id=?", [Number(params.id)]);

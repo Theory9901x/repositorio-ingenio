@@ -121,7 +121,7 @@ body{
 .modal-head h3{font-family:'Bricolage Grotesque';font-weight:800;font-size:18px;margin:0;letter-spacing:-.01em;}
 .modal-body{padding:20px 22px;display:flex;flex-direction:column;gap:15px;}
 .field label{display:block;font-size:12px;font-weight:700;color:var(--soft);margin-bottom:6px;letter-spacing:.02em;}
-.field input[type=text],.field input[type=password],.field input[type=date],.field input[type=file],.field select{
+.field input[type=text],.field input[type=email],.field input[type=password],.field input[type=date],.field input[type=file],.field select{
   width:100%;border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:10px 12px;
   font-family:inherit;font-size:14px;color:var(--ink);outline:none;}
 .field input:focus,.field select:focus{border-color:var(--clay);}

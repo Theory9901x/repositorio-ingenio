@@ -1,7 +1,8 @@
-import { isAuthed } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return Response.json({ admin: isAuthed() });
+  const user = await getCurrentUser();
+  return Response.json(user ?? null);
 }

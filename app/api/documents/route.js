@@ -1,5 +1,5 @@
 import { getPool } from "@/lib/db";
-import { isAuthed } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
@@ -20,7 +20,8 @@ export async function GET() {
 }
 
 export async function POST(req) {
-  if (!isAuthed()) return Response.json({ error: "No autorizado" }, { status: 401 });
+  const me = await getCurrentUser();
+  if (!me?.isAdmin) return Response.json({ error: "No autorizado" }, { status: 401 });
   const pool = getPool();
   const fd = await req.formData();
 

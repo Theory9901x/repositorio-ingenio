@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import {
   FileText, Folder, FolderOpen, ChevronRight, ChevronDown, Search, Plus,
   Pencil, Trash2, X, ArrowLeft, Download, Lock, Globe, Settings, Check,
-  FileStack, History, LogOut,
+  FileStack, History, LogOut, User,
 } from "lucide-react";
 
 const TIERS = [
@@ -22,13 +22,17 @@ const STATES = {
 };
 
 export default function Page() {
-  const [loading, setLoading] = useState(true);
+  /* ── auth ── */
+  const [authLoaded, setAuthLoaded] = useState(false);
+  const [user, setUser] = useState(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  /* ── app data ── */
+  const [loading, setLoading] = useState(false);
   const [processes, setProcesses] = useState([]);
   const [docTypes, setDocTypes] = useState([]);
   const [docs, setDocs] = useState([]);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false);
 
   const [view, setView] = useState("map");
   const [selProc, setSelProc] = useState(null);
@@ -42,6 +46,8 @@ export default function Page() {
 
   const [editing, setEditing] = useState(null);
   const [detail, setDetail] = useState(null);
+
+  const isAdmin = user?.isAdmin === true;
 
   const norm = (d) => ({
     ...d,
@@ -58,20 +64,32 @@ export default function Page() {
     setDocs((await r.json()).map(norm));
   }
 
+  async function loadData() {
+    setLoading(true);
+    const [p, t] = await Promise.all([
+      fetch("/api/processes").then((r) => r.json()),
+      fetch("/api/doctypes").then((r) => r.json()),
+    ]);
+    setProcesses(p);
+    setDocTypes(t);
+    await loadDocs();
+    setLoading(false);
+  }
+
   useEffect(() => {
     (async () => {
-      const [p, t, me] = await Promise.all([
-        fetch("/api/processes").then((r) => r.json()),
-        fetch("/api/doctypes").then((r) => r.json()),
-        fetch("/api/auth/me").then((r) => r.json()),
-      ]);
-      setProcesses(p);
-      setDocTypes(t);
-      setIsAdmin(!!me.admin);
-      await loadDocs();
-      setLoading(false);
+      const me = await fetch("/api/auth/me").then((r) => r.json());
+      setUser(me || null);
+      setAuthLoaded(true);
+      if (me) await loadData();
     })();
   }, []);
+
+  async function handleLoginSuccess() {
+    const me = await fetch("/api/auth/me").then((r) => r.json());
+    setUser(me);
+    await loadData();
+  }
 
   const procById = (id) => processes.find((p) => p.id === id);
   const typeById = (id) => docTypes.find((t) => t.id === id);
@@ -128,21 +146,20 @@ export default function Page() {
   }
 
   async function handleDelete(d) {
-    if (!window.confirm(`¿Eliminar “${d.name}” (${d.code})?`)) return;
+    if (!window.confirm(`¿Eliminar "${d.name}" (${d.code})?`)) return;
     await fetch(`/api/documents/${d.id}`, { method: "DELETE" });
     await loadDocs();
   }
 
-  function openAdmin() {
-    if (isAdmin) setShowAdmin(true);
-    else setLoginOpen(true);
-  }
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    setIsAdmin(false);
+    setUser(null);
     setShowAdmin(false);
   }
 
+  /* ── renders ── */
+  if (!authLoaded) return <div className="loading">Cargando…</div>;
+  if (!user) return <AuthScreen onSuccess={handleLoginSuccess} />;
   if (loading) return <div className="loading">Cargando repositorio…</div>;
 
   return (
@@ -155,16 +172,26 @@ export default function Page() {
             <p>Repositorio Documental</p>
           </div>
         </div>
-        <div className="modeswitch">
-          <button className={!showAdmin ? "on" : ""} onClick={() => setShowAdmin(false)}>
-            <Globe size={14} /> Consulta
-          </button>
-          <button className={showAdmin ? "on" : ""} onClick={openAdmin}>
-            <Settings size={14} /> Administración
-          </button>
-          {isAdmin && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="modeswitch">
+            <button className={!showAdmin ? "on" : ""} onClick={() => setShowAdmin(false)}>
+              <Globe size={14} /> Consulta
+            </button>
+            {isAdmin && (
+              <button className={showAdmin ? "on" : ""} onClick={() => setShowAdmin(true)}>
+                <Settings size={14} /> Administración
+              </button>
+            )}
+          </div>
+          <div className="modeswitch">
+            <button onClick={() => setProfileOpen(true)} title="Mi perfil" style={{ gap: 6 }}>
+              <User size={14} />
+              <span style={{ maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {user.full_name.split(" ")[0]}
+              </span>
+            </button>
             <button onClick={logout} title="Cerrar sesión"><LogOut size={14} /></button>
-          )}
+          </div>
         </div>
       </div>
 
@@ -228,7 +255,7 @@ export default function Page() {
                 </tbody>
               </table>
             ) : (
-              <div className="empty">No hay documentos en “{STATES[tab].label}” con esos filtros.</div>
+              <div className="empty">No hay documentos en "{STATES[tab].label}" con esos filtros.</div>
             )}
           </div>
         ) : view === "map" ? (
@@ -349,17 +376,254 @@ export default function Page() {
         />
       )}
 
-      {loginOpen && (
-        <LoginModal
-          onClose={() => setLoginOpen(false)}
-          onSuccess={() => { setIsAdmin(true); setShowAdmin(true); setLoginOpen(false); }}
+      {profileOpen && (
+        <ProfileModal
+          user={user}
+          onClose={() => setProfileOpen(false)}
+          onUpdate={(updated) => setUser({ ...user, ...updated })}
         />
       )}
     </>
   );
 }
 
-/* ---------------- Formulario crear / editar ---------------- */
+/* ──────────────────────────────────────────────
+   Pantalla de autenticación (login + registro)
+────────────────────────────────────────────── */
+function AuthScreen({ onSuccess }) {
+  const [tab, setTab] = useState("login");
+
+  return (
+    <div style={{
+      minHeight: "100vh", display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", padding: "22px",
+    }}>
+      <div style={{ width: "100%", maxWidth: 420 }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <div style={{
+            width: 46, height: 46, borderRadius: 12, background: "var(--ink)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "var(--paper)", fontFamily: "'Bricolage Grotesque'",
+            fontWeight: 800, fontSize: 20, margin: "0 auto 14px",
+          }}>GI</div>
+          <h1 style={{
+            fontFamily: "'Bricolage Grotesque'", fontWeight: 800,
+            fontSize: 26, letterSpacing: "-.02em", margin: "0 0 5px",
+          }}>Grupo Ingenio</h1>
+          <p style={{ color: "var(--muted)", fontSize: 13, margin: 0, textTransform: "uppercase", letterSpacing: ".04em" }}>
+            Repositorio Documental
+          </p>
+        </div>
+
+        <div style={{
+          background: "var(--card)", border: "1px solid var(--line)",
+          borderRadius: 18, overflow: "hidden",
+          boxShadow: "0 20px 50px -20px rgba(27,26,23,.35)",
+        }}>
+          <div className="tabs" style={{ margin: "16px 20px 0" }}>
+            <button className={tab === "login" ? "on" : ""} onClick={() => setTab("login")} style={{ flex: 1 }}>
+              Iniciar sesión
+            </button>
+            <button className={tab === "register" ? "on" : ""} onClick={() => setTab("register")} style={{ flex: 1 }}>
+              Registrarse
+            </button>
+          </div>
+          <div style={{ padding: "20px 22px 24px" }}>
+            {tab === "login"
+              ? <LoginForm onSuccess={onSuccess} />
+              : <RegisterForm onSuccess={() => setTab("login")} />
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoginForm({ onSuccess }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    if (!email || !password || busy) return;
+    setBusy(true); setErr("");
+    const r = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    setBusy(false);
+    if (r.ok) onSuccess();
+    else setErr("Correo o contraseña incorrectos.");
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div className="field">
+        <label>Correo electrónico</label>
+        <input type="email" value={email} autoFocus autoComplete="email"
+          onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()} />
+      </div>
+      <div className="field">
+        <label>Contraseña</label>
+        <input type="password" value={password} autoComplete="current-password"
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()} />
+      </div>
+      {err && <div className="err">{err}</div>}
+      <button className="btn btn-primary" disabled={!email || !password || busy}
+        onClick={submit} style={{ justifyContent: "center" }}>
+        <Lock size={15} /> {busy ? "Entrando…" : "Iniciar sesión"}
+      </button>
+    </div>
+  );
+}
+
+function RegisterForm({ onSuccess }) {
+  const [form, setForm] = useState({ full_name: "", cedula: "", email: "", password: "", cargo: "" });
+  const [err, setErr] = useState("");
+  const [ok, setOk] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function submit() {
+    if (!form.full_name || !form.cedula || !form.email || !form.password || !form.cargo || busy) return;
+    setBusy(true); setErr("");
+    const r = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    setBusy(false);
+    if (r.ok) { setOk(true); setTimeout(onSuccess, 1800); }
+    else { const d = await r.json(); setErr(d.error || "Error al registrar"); }
+  }
+
+  if (ok) {
+    return (
+      <div style={{ textAlign: "center", padding: "20px 0", color: "var(--green)", fontWeight: 600 }}>
+        ¡Cuenta creada! Redirigiendo al inicio de sesión…
+      </div>
+    );
+  }
+
+  const canSubmit = form.full_name && form.cedula && form.email && form.password && form.cargo && !busy;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div className="field">
+        <label>Nombre completo</label>
+        <input type="text" value={form.full_name} autoFocus autoComplete="name"
+          onChange={(e) => set("full_name", e.target.value)} />
+      </div>
+      <div className="row2">
+        <div className="field">
+          <label>Cédula</label>
+          <input type="text" value={form.cedula} onChange={(e) => set("cedula", e.target.value)} />
+        </div>
+        <div className="field">
+          <label>Cargo</label>
+          <input type="text" value={form.cargo} onChange={(e) => set("cargo", e.target.value)} />
+        </div>
+      </div>
+      <div className="field">
+        <label>Correo electrónico</label>
+        <input type="email" value={form.email} autoComplete="email"
+          onChange={(e) => set("email", e.target.value)} />
+      </div>
+      <div className="field">
+        <label>Contraseña</label>
+        <input type="password" value={form.password} autoComplete="new-password"
+          onChange={(e) => set("password", e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()} />
+      </div>
+      {err && <div className="err">{err}</div>}
+      <button className="btn btn-primary" disabled={!canSubmit}
+        onClick={submit} style={{ justifyContent: "center" }}>
+        {busy ? "Registrando…" : "Crear cuenta"}
+      </button>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   Modal de perfil
+────────────────────────────────────────────── */
+function ProfileModal({ user, onClose, onUpdate }) {
+  const [fullName, setFullName] = useState(user.full_name);
+  const [cargo, setCargo] = useState(user.cargo || "");
+  const [curPw, setCurPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function submit() {
+    setSaving(true); setErr("");
+    const body = { full_name: fullName, cargo };
+    if (newPw) { body.currentPassword = curPw; body.newPassword = newPw; }
+    const r = await fetch("/api/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setSaving(false);
+    if (r.ok) { onUpdate({ full_name: fullName, cargo }); onClose(); }
+    else { const d = await r.json(); setErr(d.error || "Error al guardar"); }
+  }
+
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="modal sm" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3>Mi perfil</h3>
+          <button className="iconbtn" onClick={onClose}><X size={17} /></button>
+        </div>
+        <div className="modal-body">
+          <div className="field">
+            <label>Nombre completo</label>
+            <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          </div>
+          <div className="field">
+            <label>Cargo</label>
+            <input type="text" value={cargo} onChange={(e) => setCargo(e.target.value)} />
+          </div>
+          <div className="field">
+            <label>Correo</label>
+            <input type="text" value={user.email} disabled style={{ opacity: 0.6, cursor: "not-allowed" }} />
+          </div>
+          <div style={{ height: 1, background: "var(--line)" }} />
+          <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em" }}>
+            Cambiar contraseña (opcional)
+          </div>
+          <div className="field">
+            <label>Contraseña actual</label>
+            <input type="password" value={curPw} autoComplete="current-password"
+              onChange={(e) => setCurPw(e.target.value)} />
+          </div>
+          <div className="field">
+            <label>Nueva contraseña</label>
+            <input type="password" value={newPw} autoComplete="new-password"
+              onChange={(e) => setNewPw(e.target.value)} />
+          </div>
+          {err && <div className="err">{err}</div>}
+        </div>
+        <div className="modal-foot">
+          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-primary" disabled={saving || !fullName} onClick={submit}>
+            <Check size={16} /> {saving ? "Guardando…" : "Guardar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   Formulario crear / editar documento
+────────────────────────────────────────────── */
 function DocForm({ editing, processes, docTypes, docs, onClose, onSave }) {
   const isNew = editing === "new";
   const [form, setForm] = useState(
@@ -460,51 +724,6 @@ function DocForm({ editing, processes, docTypes, docs, onClose, onSave }) {
           <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
           <button className="btn btn-primary" disabled={!form.name.trim() || saving} onClick={submit}>
             <Check size={16} /> {saving ? "Guardando…" : isNew ? "Crear documento" : "Guardar cambios"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- Login ---------------- */
-function LoginModal({ onClose, onSuccess }) {
-  const [pw, setPw] = useState("");
-  const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function submit() {
-    setBusy(true); setErr("");
-    const r = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: pw }),
-    });
-    setBusy(false);
-    if (r.ok) onSuccess();
-    else setErr("Contraseña incorrecta.");
-  }
-
-  return (
-    <div className="overlay" onClick={onClose}>
-      <div className="modal sm" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head">
-          <h3>Acceso administrador</h3>
-          <button className="iconbtn" onClick={onClose}><X size={17} /></button>
-        </div>
-        <div className="modal-body">
-          <div className="field">
-            <label>Contraseña</label>
-            <input type="password" value={pw} autoFocus
-              onChange={(e) => setPw(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && submit()} />
-          </div>
-          {err && <div className="err">{err}</div>}
-        </div>
-        <div className="modal-foot">
-          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
-          <button className="btn btn-primary" disabled={!pw || busy} onClick={submit}>
-            <Lock size={15} /> {busy ? "Entrando…" : "Entrar"}
           </button>
         </div>
       </div>
