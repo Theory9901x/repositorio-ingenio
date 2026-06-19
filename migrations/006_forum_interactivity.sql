@@ -1,0 +1,8 @@
+ALTER TABLE forum_topics ADD COLUMN IF NOT EXISTS category VARCHAR(40) NOT NULL DEFAULT 'general';
+ALTER TABLE forum_topics ADD COLUMN IF NOT EXISTS document_id INT NULL;
+CREATE TABLE IF NOT EXISTS forum_reactions (
+  topic_id INT NOT NULL,
+  user_id INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY(topic_id,user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

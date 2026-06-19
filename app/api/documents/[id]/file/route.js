@@ -24,7 +24,7 @@ export async function GET(req, { params }) {
   return new Response(data, {
     headers: {
       "Content-Type": doc.file_mime || "application/octet-stream",
-      "Content-Disposition": `attachment; filename="${encodeURIComponent(doc.file_name || "documento")}"`,
+      "Content-Disposition": `inline; filename="${encodeURIComponent(doc.file_name || "documento")}"`,
     },
   });
 }

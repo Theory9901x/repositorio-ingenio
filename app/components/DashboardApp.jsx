@@ -128,7 +128,7 @@ export default function DashboardApp() {
           : <Consultation processes={matchingProcesses} docs={docs} query={query} setQuery={setQuery} view={view} setView={setView} countFor={countFor} onOpen={setSelectedProcess} mapFailed={mapFailed} setMapFailed={setMapFailed} />)}
         {section === "workspace" && <WorkspacePanel docs={docs} procById={procById} typeById={typeById} setDetail={setDetail} />}
         {section === "contracts" && <ContractRoutesPanel user={user} />}
-        {section === "community" && <CommunityPanel user={user} />}
+        {section === "community" && <CommunityPanel user={user} docs={docs} setDetail={setDetail} />}
         {section === "profile" && <ProfilePanel user={user} onChanged={loadUser} />}
         {section === "admin" && user.isAdmin && <><AdminContentPanel processes={processes} onChanged={loadAll}/><AdminDocumentPanel docs={docs} processes={processes} docTypes={docTypes} procById={procById} typeById={typeById} onChanged={loadAll} /></>}
       </div>
