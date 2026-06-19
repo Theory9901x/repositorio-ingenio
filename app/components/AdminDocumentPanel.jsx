@@ -6,7 +6,7 @@ import { Check, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 const STATES={vigente:"Vigente",no_publicado:"No publicado",obsoleto:"Obsoleto",anulado:"Anulado"};
 const base=(p,t)=>({name:"",processId:p[0]?.id||"",typeId:t[0]?.id||"",state:"no_publicado",origin:"interno",isPublic:false,due:"",fileObj:null,newVersion:false});
 
-export default function AdminDocumentPanel({docs=[],processes=[],docTypes=[],procById,typeById,onChanged}){
+export default function AdminDocumentPanel({docs=[],processes=[],docTypes=[],procById=()=>null,typeById=()=>null,onChanged=async()=>{}}){
   const[tab,setTab]=useState("vigente"),[q,setQ]=useState(""),[pf,setPf]=useState(""),[tf,setTf]=useState(""),[editing,setEditing]=useState(null),[form,setForm]=useState(base(processes,docTypes)),[saving,setSaving]=useState(false);
   const rows=useMemo(()=>docs.filter(d=>d.state===tab).filter(d=>pf?d.processId===Number(pf):true).filter(d=>tf?d.typeId===Number(tf):true).filter(d=>{const term=q.trim().toLowerCase();if(!term)return true;const p=procById(d.processId),t=typeById(d.typeId);return[d.code,d.name,p?.name,p?.sigla,t?.name,t?.sigla].filter(Boolean).some(x=>String(x).toLowerCase().includes(term))}),[docs,tab,q,pf,tf,processes,docTypes]);
   function newDoc(){setEditing("new");setForm(base(processes,docTypes));}
