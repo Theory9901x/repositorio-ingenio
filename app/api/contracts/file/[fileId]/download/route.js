@@ -1,18 +1,2 @@
-import { getPool } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import fs from "fs/promises";
-import path from "path";
-
-export const dynamic = "force-dynamic";
-const UPLOAD_DIR = process.env.UPLOAD_DIR || "/var/lib/repositorio/uploads";
-
-export async function GET(_req, { params }) {
-  const me = await getCurrentUser();
-  if (!me) return Response.json({ error: "No autorizado" }, { status: 401 });
-  const id = Number(params.fileId);
-  const pool = getPool();
-  const [[file]] = await pool.query("SELECT file_path, mime_type FROM contract_files WHERE id=?", [id]);
-  if (!file?.file_path) return Response.json({ error: "Archivo no encontrado" }, { status: 404 });
-  const buf = await fs.readFile(path.join(UPLOAD_DIR, file.file_path));
-  return new Response(buf, { headers: { "Content-Type": file.mime_type || "application/octet-stream" } });
-}
+import{getPool}from"@/lib/db";import{getCurrentUser}from"@/lib/auth";import{ensureContractSchema,canAccessContract}from"@/lib/contracts";import fs from"fs/promises";import path from"path";export const dynamic="force-dynamic";const ROOT=process.env.UPLOAD_DIR||"/var/lib/repositorio/uploads";
+export async function GET(_r,{params}){const me=await getCurrentUser(),p=getPool();await ensureContractSchema(p);const[[f]]=await p.query("SELECT * FROM contract_files WHERE id=?",[Number(params.fileId)]);if(!f||!me||!await canAccessContract(p,me,f.contract_id)||(!me.isAdmin&&f.visibility!=='general'&&f.owner_user_id!==me.id))return Response.json({error:"No autorizado"},{status:403});try{return new Response(await fs.readFile(path.join(ROOT,f.file_path)),{headers:{"Content-Type":f.mime_type||'application/octet-stream',"Content-Disposition":`inline; filename="${encodeURIComponent(f.file_name||'archivo')}"`}})}catch{return Response.json({error:"Archivo no encontrado"},{status:404})}}

@@ -1,29 +1,3 @@
-import { getPool } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import { ensureFeatureSchema } from "@/lib/featureSchema";
-
-export const dynamic = "force-dynamic";
-
-export async function GET() {
-  const me = await getCurrentUser();
-  if (!me) return Response.json({ error: "No autorizado" }, { status: 401 });
-  const pool = getPool();
-  await ensureFeatureSchema(pool);
-  const [rows] = await pool.query(`SELECT c.id,c.title,c.code,c.entity_name,c.description,c.status,DATE_FORMAT(c.created_at,'%Y-%m-%d %H:%i:%s') created_at FROM contract_routes c WHERE ? OR EXISTS(SELECT 1 FROM contract_members m WHERE m.contract_id=c.id AND m.user_id=?) ORDER BY c.created_at DESC`,[me.isAdmin?1:0,me.id]);
-  return Response.json(rows);
-}
-
-export async function POST(req) {
-  const me = await getCurrentUser();
-  if (!me?.isAdmin) return Response.json({ error: "No autorizado" }, { status: 401 });
-  const body = await req.json().catch(() => ({}));
-  const title = (body.title || "").toString().trim();
-  const code = (body.code || "").toString().trim() || null;
-  const entityName = (body.entity_name || "").toString().trim() || null;
-  const description = (body.description || "").toString().trim() || null;
-  const status = (body.status || "activo").toString();
-  if (!title) return Response.json({ error: "Nombre requerido" }, { status: 400 });
-  const pool = getPool();
-  const [result] = await pool.query("INSERT INTO contract_routes (title,code,entity_name,description,status,created_by) VALUES (?,?,?,?,?,?)", [title, code, entityName, description, status, me.id]);
-  return Response.json({ ok: true, id: result.insertId });
-}
+import{getPool}from"@/lib/db";import{getCurrentUser}from"@/lib/auth";import{ensureFeatureSchema}from"@/lib/featureSchema";import{ensureContractSchema,addContractEvent}from"@/lib/contracts";export const dynamic="force-dynamic";
+export async function GET(){const me=await getCurrentUser();if(!me)return Response.json({error:"No autorizado"},{status:401});const p=getPool();await ensureFeatureSchema(p);await ensureContractSchema(p);const [rows]=await p.query(`SELECT c.*,DATE_FORMAT(c.start_date,'%Y-%m-%d') start_date,DATE_FORMAT(c.end_date,'%Y-%m-%d') end_date,u.full_name responsible_name,(SELECT COUNT(*) FROM contract_files f WHERE f.contract_id=c.id) file_count,(SELECT COUNT(*) FROM contract_files f WHERE f.contract_id=c.id AND(f.section='evidencia' OR f.visibility='user_evidence')) evidence_count,(SELECT COUNT(*) FROM contract_document_submissions s WHERE s.contract_id=c.id AND s.status='enviado') pending_count FROM contract_routes c LEFT JOIN users u ON u.id=c.internal_responsible_id WHERE ? OR EXISTS(SELECT 1 FROM contract_users cu WHERE cu.contract_id=c.id AND cu.user_id=?) OR EXISTS(SELECT 1 FROM contract_members cm WHERE cm.contract_id=c.id AND cm.user_id=?) ORDER BY c.created_at DESC`,[me.isAdmin?1:0,me.id,me.id]);return Response.json(rows)}
+export async function POST(req){const me=await getCurrentUser();if(!me?.isAdmin)return Response.json({error:"No autorizado"},{status:401});const b=await req.json().catch(()=>({}));if(!b.title?.trim())return Response.json({error:"Nombre requerido"},{status:400});const p=getPool();await ensureContractSchema(p);const[r]=await p.query("INSERT INTO contract_routes(title,code,entity_name,object,description,start_date,end_date,status,internal_responsible_id,created_by)VALUES(?,?,?,?,?,?,?,?,?,?)",[b.title.trim(),b.code||null,b.entity_name||null,b.object||null,b.description||null,b.start_date||null,b.end_date||null,b.status||'activo',b.internal_responsible_id||null,me.id]);await addContractEvent(p,r.insertId,me.id,'contract_created','Contrato creado');return Response.json({ok:true,id:r.insertId})}

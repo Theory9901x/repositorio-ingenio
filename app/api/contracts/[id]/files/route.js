@@ -4,6 +4,7 @@ import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import { ensureFeatureSchema } from "@/lib/featureSchema";
+import { ensureContractSchema, addContractEvent } from "@/lib/contracts";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export async function GET(_req, { params }) {
   if (!me) return Response.json({ error: "No autorizado" }, { status: 401 });
   const contractId = Number(params.id);
   const pool = getPool();
+  await ensureContractSchema(pool);
   await ensureFeatureSchema(pool);
   const [[access]]=await pool.query("SELECT 1 ok FROM contract_routes c WHERE c.id=? AND (? OR EXISTS(SELECT 1 FROM contract_members m WHERE m.contract_id=c.id AND m.user_id=?))",[contractId,me.isAdmin?1:0,me.id]);
   if(!access)return Response.json({error:"No perteneces a este contrato"},{status:403});
@@ -25,8 +27,8 @@ export async function GET(_req, { params }) {
             u.full_name AS uploaded_by_name
      FROM contract_files cf
      LEFT JOIN users u ON u.id = cf.uploaded_by
-     WHERE cf.contract_id=? ORDER BY cf.created_at DESC`,
-    [contractId]
+     WHERE cf.contract_id=? AND (? OR cf.visibility='general' OR cf.owner_user_id=?) ORDER BY cf.created_at DESC`,
+    [contractId,me.isAdmin?1:0,me.id]
   );
   return Response.json(rows);
 }
@@ -37,6 +39,7 @@ export async function POST(req, { params }) {
   const contractId = Number(params.id);
   const pool = getPool();
   await ensureFeatureSchema(pool);
+  await ensureContractSchema(pool);
   const [[membership]]=await pool.query("SELECT 1 ok FROM contract_routes c WHERE c.id=? AND (? OR EXISTS(SELECT 1 FROM contract_members m WHERE m.contract_id=c.id AND m.user_id=?))",[contractId,me.isAdmin?1:0,me.id]);
   if(!membership)return Response.json({error:"No perteneces a este contrato"},{status:403});
   const [[contract]] = await pool.query("SELECT id FROM contract_routes WHERE id=?", [contractId]);
@@ -60,5 +63,6 @@ export async function POST(req, { params }) {
     "INSERT INTO contract_files (contract_id,uploaded_by,section,title,description,file_name,file_path,mime_type,size_bytes,visibility,owner_user_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
     [contractId, me.id, section, title || file.name, description, file.name, "contracts/" + stored, file.type || "application/octet-stream", file.size, visibility, ownerUserId]
   );
+  await addContractEvent(pool,contractId,me.id,"file_uploaded",`Archivo cargado: ${title || file.name}`);
   return Response.json({ ok: true, id: result.insertId });
 }

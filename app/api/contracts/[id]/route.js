@@ -1,42 +1,4 @@
-import { getPool } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-
-export const dynamic = "force-dynamic";
-
-export async function GET(_req, { params }) {
-  const me = await getCurrentUser();
-  if (!me) return Response.json({ error: "No autorizado" }, { status: 401 });
-  const id = Number(params.id);
-  const pool = getPool();
-  const [[row]] = await pool.query("SELECT id, title, code, entity_name, description, status, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at FROM contract_routes WHERE id=?", [id]);
-  if (!row) return Response.json({ error: "No encontrado" }, { status: 404 });
-  return Response.json(row);
-}
-
-export async function PUT(req, { params }) {
-  const me = await getCurrentUser();
-  if (!me?.isAdmin) return Response.json({ error: "No autorizado" }, { status: 401 });
-  const id = Number(params.id);
-  const body = await req.json().catch(() => ({}));
-  const title = (body.title || "").toString().trim();
-  const code = (body.code || "").toString().trim() || null;
-  const entityName = (body.entity_name || "").toString().trim() || null;
-  const description = (body.description || "").toString().trim() || null;
-  const status = (body.status || "activo").toString();
-  if (!title) return Response.json({ error: "Nombre requerido" }, { status: 400 });
-  const pool = getPool();
-  const [result] = await pool.query("UPDATE contract_routes SET title=?, code=?, entity_name=?, description=?, status=? WHERE id=?", [title, code, entityName, description, status, id]);
-  if (!result.affectedRows) return Response.json({ error: "No encontrado" }, { status: 404 });
-  return Response.json({ ok: true });
-}
-
-export async function DELETE(_req, { params }) {
-  const me = await getCurrentUser();
-  if (!me?.isAdmin) return Response.json({ error: "No autorizado" }, { status: 401 });
-  const id = Number(params.id);
-  const pool = getPool();
-  await pool.query("DELETE FROM contract_files WHERE contract_id=?", [id]);
-  const [result] = await pool.query("DELETE FROM contract_routes WHERE id=?", [id]);
-  if (!result.affectedRows) return Response.json({ error: "No encontrado" }, { status: 404 });
-  return Response.json({ ok: true });
-}
+import{getPool}from"@/lib/db";import{getCurrentUser}from"@/lib/auth";import{ensureContractSchema,canAccessContract,addContractEvent}from"@/lib/contracts";export const dynamic="force-dynamic";
+export async function GET(_r,{params}){const me=await getCurrentUser(),p=getPool(),id=Number(params.id);await ensureContractSchema(p);if(!me||!await canAccessContract(p,me,id))return Response.json({error:"No autorizado"},{status:403});const[[x]]=await p.query("SELECT *,DATE_FORMAT(start_date,'%Y-%m-%d') start_date,DATE_FORMAT(end_date,'%Y-%m-%d') end_date FROM contract_routes WHERE id=?",[id]);return x?Response.json(x):Response.json({error:"No encontrado"},{status:404})}
+export async function PUT(req,{params}){const me=await getCurrentUser();if(!me?.isAdmin)return Response.json({error:"No autorizado"},{status:401});const b=await req.json(),id=Number(params.id),p=getPool();await ensureContractSchema(p);await p.query("UPDATE contract_routes SET title=?,code=?,entity_name=?,object=?,description=?,start_date=?,end_date=?,status=?,internal_responsible_id=? WHERE id=?",[b.title,b.code||null,b.entity_name||null,b.object||null,b.description||null,b.start_date||null,b.end_date||null,b.status||'activo',b.internal_responsible_id||null,id]);await addContractEvent(p,id,me.id,'contract_updated','Información del contrato actualizada');return Response.json({ok:true})}
+export async function DELETE(_r,{params}){const me=await getCurrentUser();if(!me?.isAdmin)return Response.json({error:"No autorizado"},{status:401});const p=getPool(),id=Number(params.id);await ensureContractSchema(p);await p.query("DELETE FROM contract_routes WHERE id=?",[id]);return Response.json({ok:true})}
