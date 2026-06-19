@@ -1,47 +1,8 @@
 import { getCurrentUser } from "@/lib/auth";
 import { getPool } from "@/lib/db";
+import { ensureFeatureSchema } from "@/lib/featureSchema";
 import bcrypt from "bcryptjs";
 
-export const dynamic = "force-dynamic";
-
-export async function GET() {
-  const user = await getCurrentUser();
-  if (!user) return Response.json({ error: "No autenticado" }, { status: 401 });
-  return Response.json(user);
-}
-
-export async function PUT(req) {
-  const user = await getCurrentUser();
-  if (!user) return Response.json({ error: "No autenticado" }, { status: 401 });
-
-  const { full_name, cargo, currentPassword, newPassword } =
-    await req.json().catch(() => ({}));
-
-  const pool = getPool();
-
-  if (newPassword) {
-    if (!currentPassword) {
-      return Response.json({ error: "Debes indicar tu contraseña actual" }, { status: 400 });
-    }
-    const [[row]] = await pool.query(
-      "SELECT password_hash FROM users WHERE id=?",
-      [user.id]
-    );
-    const ok = await bcrypt.compare(currentPassword, row.password_hash);
-    if (!ok) {
-      return Response.json({ error: "Contraseña actual incorrecta" }, { status: 400 });
-    }
-    const hash = await bcrypt.hash(newPassword, 12);
-    await pool.query(
-      "UPDATE users SET full_name=?, cargo=?, password_hash=? WHERE id=?",
-      [full_name || user.full_name, cargo ?? user.cargo, hash, user.id]
-    );
-  } else {
-    await pool.query(
-      "UPDATE users SET full_name=?, cargo=? WHERE id=?",
-      [full_name || user.full_name, cargo ?? user.cargo, user.id]
-    );
-  }
-
-  return Response.json({ ok: true });
-}
+export const dynamic="force-dynamic";
+export async function GET(){const me=await getCurrentUser();if(!me)return Response.json({error:"No autenticado"},{status:401});const pool=getPool();await ensureFeatureSchema(pool);const [[p]]=await pool.query("SELECT bio,phone,(photo_data IS NOT NULL) AS has_photo FROM user_profiles WHERE user_id=?",[me.id]);const [contracts]=await pool.query("SELECT c.id,c.title,c.code FROM contract_members m JOIN contract_routes c ON c.id=m.contract_id WHERE m.user_id=?",[me.id]);return Response.json({...me,...p,contracts});}
+export async function PUT(req){const me=await getCurrentUser();if(!me)return Response.json({error:"No autenticado"},{status:401});const fd=await req.formData();const pool=getPool();await ensureFeatureSchema(pool);const full=(fd.get("full_name")||me.full_name).toString().trim(),cargo=(fd.get("cargo")||me.cargo||"").toString(),bio=(fd.get("bio")||"").toString(),phone=(fd.get("phone")||"").toString(),current=fd.get("currentPassword")?.toString(),next=fd.get("newPassword")?.toString();if(next){const [[u]]=await pool.query("SELECT password_hash FROM users WHERE id=?",[me.id]);if(!current||!await bcrypt.compare(current,u.password_hash))return Response.json({error:"Contraseña actual incorrecta"},{status:400});await pool.query("UPDATE users SET full_name=?,cargo=?,password_hash=? WHERE id=?",[full,cargo,await bcrypt.hash(next,12),me.id]);}else await pool.query("UPDATE users SET full_name=?,cargo=? WHERE id=?",[full,cargo,me.id]);const photo=fd.get("photo");const data=photo&&typeof photo==="object"&&photo.size?Buffer.from(await photo.arrayBuffer()):null;await pool.query(`INSERT INTO user_profiles(user_id,bio,phone,photo_data,photo_mime) VALUES(?,?,?,?,?) ON DUPLICATE KEY UPDATE bio=VALUES(bio),phone=VALUES(phone),photo_data=COALESCE(VALUES(photo_data),photo_data),photo_mime=COALESCE(VALUES(photo_mime),photo_mime)`,[me.id,bio,phone,data,data?(photo.type||"image/jpeg"):null]);return Response.json({ok:true});}

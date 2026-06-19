@@ -3,12 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight, BriefcaseBusiness, Building2, FileSearch, FileText,
-  Grid2X2, LogOut, Map, Search, Settings, ShieldCheck, UserRound, X,
+  Grid2X2, LogOut, Map, MessageCircle, Search, Settings, ShieldCheck, UserRound, X,
 } from "lucide-react";
 import AdminDocumentPanel from "./AdminDocumentPanel";
 import ContractRoutesPanel from "./ContractRoutesPanel";
 import ProcessDetailView from "./ProcessDetailView";
 import WorkspacePanel from "./WorkspacePanel";
+import ProfilePanel from "./ProfilePanel";
+import CommunityPanel from "./CommunityPanel";
+import AdminContentPanel from "./AdminContentPanel";
 
 const TIERS = [
   ["estrategico", "Procesos estratégicos", "#0017E8"],
@@ -16,7 +19,7 @@ const TIERS = [
   ["apoyo", "Procesos de apoyo", "#101A63"],
   ["evaluacion", "Procesos de evaluación", "#6477C8"],
 ];
-const SECTION_TITLES = { consultation: "Consulta documental", workspace: "Mi espacio / Plan", contracts: "Contratos / Rutas", admin: "Administración" };
+const SECTION_TITLES = { consultation: "Consulta documental", workspace: "Mi espacio / Plan", contracts: "Contratos / Rutas", community:"Comunidad", profile:"Mi perfil", admin: "Administración" };
 const initialAuth = { full_name: "", cedula: "", email: "", password: "", cargo: "" };
 
 async function readJson(response) {
@@ -104,6 +107,8 @@ export default function DashboardApp() {
     ["consultation", FileSearch, "Consulta documental"],
     ["workspace", UserRound, "Mi espacio / Plan"],
     ["contracts", BriefcaseBusiness, "Contratos / Rutas"],
+    ["community", MessageCircle, "Comunidad"],
+    ["profile", UserRound, "Mi perfil"],
     ...(user.isAdmin ? [["admin", Settings, "Administración"]] : []),
   ];
 
@@ -123,7 +128,9 @@ export default function DashboardApp() {
           : <Consultation processes={matchingProcesses} docs={docs} query={query} setQuery={setQuery} view={view} setView={setView} countFor={countFor} onOpen={setSelectedProcess} mapFailed={mapFailed} setMapFailed={setMapFailed} />)}
         {section === "workspace" && <WorkspacePanel docs={docs} procById={procById} typeById={typeById} setDetail={setDetail} />}
         {section === "contracts" && <ContractRoutesPanel user={user} />}
-        {section === "admin" && user.isAdmin && <AdminDocumentPanel docs={docs} processes={processes} docTypes={docTypes} procById={procById} typeById={typeById} onChanged={loadAll} />}
+        {section === "community" && <CommunityPanel user={user} />}
+        {section === "profile" && <ProfilePanel user={user} onChanged={loadUser} />}
+        {section === "admin" && user.isAdmin && <><AdminContentPanel processes={processes} onChanged={loadAll}/><AdminDocumentPanel docs={docs} processes={processes} docTypes={docTypes} procById={procById} typeById={typeById} onChanged={loadAll} /></>}
       </div>
     </main>
     {detail && <DocumentViewer doc={detail} procById={procById} typeById={typeById} onClose={() => setDetail(null)} />}

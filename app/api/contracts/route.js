@@ -1,5 +1,6 @@
 import { getPool } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { ensureFeatureSchema } from "@/lib/featureSchema";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +8,8 @@ export async function GET() {
   const me = await getCurrentUser();
   if (!me) return Response.json({ error: "No autorizado" }, { status: 401 });
   const pool = getPool();
-  const [rows] = await pool.query("SELECT id, title, code, entity_name, description, status, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at FROM contract_routes ORDER BY created_at DESC");
+  await ensureFeatureSchema(pool);
+  const [rows] = await pool.query(`SELECT c.id,c.title,c.code,c.entity_name,c.description,c.status,DATE_FORMAT(c.created_at,'%Y-%m-%d %H:%i:%s') created_at FROM contract_routes c WHERE ? OR EXISTS(SELECT 1 FROM contract_members m WHERE m.contract_id=c.id AND m.user_id=?) ORDER BY c.created_at DESC`,[me.isAdmin?1:0,me.id]);
   return Response.json(rows);
 }
 

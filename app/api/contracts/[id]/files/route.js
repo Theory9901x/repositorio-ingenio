@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+import { ensureFeatureSchema } from "@/lib/featureSchema";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,9 @@ export async function GET(_req, { params }) {
   if (!me) return Response.json({ error: "No autorizado" }, { status: 401 });
   const contractId = Number(params.id);
   const pool = getPool();
+  await ensureFeatureSchema(pool);
+  const [[access]]=await pool.query("SELECT 1 ok FROM contract_routes c WHERE c.id=? AND (? OR EXISTS(SELECT 1 FROM contract_members m WHERE m.contract_id=c.id AND m.user_id=?))",[contractId,me.isAdmin?1:0,me.id]);
+  if(!access)return Response.json({error:"No perteneces a este contrato"},{status:403});
   const [rows] = await pool.query(
     `SELECT cf.id, cf.contract_id, cf.uploaded_by, cf.section, cf.title, cf.description,
             cf.file_name, cf.file_path, cf.mime_type, cf.size_bytes, cf.visibility, cf.owner_user_id,
@@ -32,6 +36,9 @@ export async function POST(req, { params }) {
   if (!me) return Response.json({ error: "No autorizado" }, { status: 401 });
   const contractId = Number(params.id);
   const pool = getPool();
+  await ensureFeatureSchema(pool);
+  const [[membership]]=await pool.query("SELECT 1 ok FROM contract_routes c WHERE c.id=? AND (? OR EXISTS(SELECT 1 FROM contract_members m WHERE m.contract_id=c.id AND m.user_id=?))",[contractId,me.isAdmin?1:0,me.id]);
+  if(!membership)return Response.json({error:"No perteneces a este contrato"},{status:403});
   const [[contract]] = await pool.query("SELECT id FROM contract_routes WHERE id=?", [contractId]);
   if (!contract) return Response.json({ error: "Contrato no encontrado" }, { status: 404 });
 
