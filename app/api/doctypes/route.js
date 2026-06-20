@@ -1,11 +1,8 @@
 import { getPool } from "@/lib/db";
-
-export const dynamic = "force-dynamic";
-
-export async function GET() {
-  const pool = getPool();
-  const [rows] = await pool.query(
-    "SELECT id, sigla, name, sort_order FROM doc_types ORDER BY sort_order"
-  );
-  return Response.json(rows);
-}
+import { getCurrentUser } from "@/lib/auth";
+import { ensureAdminSchema, addAdminEvent } from "@/lib/adminSchema";
+export const dynamic="force-dynamic";
+export async function GET(){const p=getPool();const[rows]=await p.query("SELECT id,sigla,name,sort_order FROM doc_types ORDER BY sort_order,name");return Response.json(rows)}
+export async function POST(req){const me=await getCurrentUser();if(!me?.isAdmin)return Response.json({error:"No autorizado"},{status:403});const b=await req.json(),p=getPool();if(!b.name?.trim()||!b.sigla?.trim())return Response.json({error:"Nombre y sigla requeridos"},{status:400});const[r]=await p.query("INSERT INTO doc_types(sigla,name,sort_order) VALUES(?,?,?)",[b.sigla.trim(),b.name.trim(),Number(b.sort_order)||0]);await ensureAdminSchema(p);await addAdminEvent(p,me.id,"tipos_documentales","created",r.insertId,`Tipo documental creado: ${b.name}`);return Response.json({ok:true,id:r.insertId})}
+export async function PUT(req){const me=await getCurrentUser();if(!me?.isAdmin)return Response.json({error:"No autorizado"},{status:403});const b=await req.json(),p=getPool();await p.query("UPDATE doc_types SET sigla=?,name=?,sort_order=? WHERE id=?",[b.sigla,b.name,Number(b.sort_order)||0,b.id]);await ensureAdminSchema(p);await addAdminEvent(p,me.id,"tipos_documentales","updated",b.id,`Tipo documental actualizado: ${b.name}`);return Response.json({ok:true})}
+export async function DELETE(req){const me=await getCurrentUser();if(!me?.isAdmin)return Response.json({error:"No autorizado"},{status:403});const id=Number(new URL(req.url).searchParams.get("id")),p=getPool();const[[used]]=await p.query("SELECT COUNT(*) total FROM documents WHERE type_id=?",[id]);if(Number(used.total))return Response.json({error:`No se puede eliminar: ${used.total} documento(s) usan este tipo`},{status:409});const[[type]]=await p.query("SELECT name FROM doc_types WHERE id=?",[id]);await p.query("DELETE FROM doc_types WHERE id=?",[id]);await ensureAdminSchema(p);await addAdminEvent(p,me.id,"tipos_documentales","deleted",id,`Tipo documental eliminado: ${type?.name||id}`);return Response.json({ok:true})}

@@ -13,6 +13,7 @@ import ProfilePanel from "./ProfilePanel";
 import CommunityPanel from "./CommunityPanel";
 import AdminContentPanel from "./AdminContentPanel";
 import InternalDocumentationPanel from "./InternalDocumentationPanel";
+import AdminGovernancePanel from "./AdminGovernancePanel";
 
 const TIERS = [
   ["estrategico", "Procesos estratégicos", "#0017E8"],
@@ -133,7 +134,7 @@ export default function DashboardApp() {
         {section === "internalDocs" && user.isAdmin && <InternalDocumentationPanel user={user} />}
         {section === "community" && <CommunityPanel user={user} docs={docs} setDetail={setDetail} />}
         {section === "profile" && <ProfilePanel user={user} onChanged={loadUser} />}
-        {section === "admin" && user.isAdmin && <><AdminContentPanel processes={processes} onChanged={loadAll}/><AdminDocumentPanel docs={docs} processes={processes} docTypes={docTypes} procById={procById} typeById={typeById} onChanged={loadAll} /></>}
+        {section === "admin" && user.isAdmin && <><AdminGovernancePanel currentUser={user} onChanged={loadAll}/><AdminContentPanel processes={processes} onChanged={loadAll}/><AdminDocumentPanel docs={docs} processes={processes} docTypes={docTypes} procById={procById} typeById={typeById} onChanged={loadAll} /></>}
       </div>
     </main>
     {detail && <DocumentViewer doc={detail} procById={procById} typeById={typeById} onClose={() => setDetail(null)} />}

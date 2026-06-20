@@ -1,0 +1,11 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active TINYINT(1) NOT NULL DEFAULT 1;
+CREATE TABLE IF NOT EXISTS admin_events (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  actor_user_id INT NOT NULL,
+  module_name VARCHAR(60) NOT NULL,
+  action_type VARCHAR(60) NOT NULL,
+  entity_id INT NULL,
+  description VARCHAR(500) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX(actor_user_id), INDEX(module_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
