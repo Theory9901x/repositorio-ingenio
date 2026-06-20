@@ -1,0 +1,3 @@
+import { requireInternalAdmin } from "@/lib/internalDocs";
+export const dynamic="force-dynamic";
+export async function GET(req){const auth=await requireInternalAdmin();if(auth.response)return auth.response;const u=new URL(req.url),folder=u.searchParams.get("folderId"),values=[],where=[];if(folder){where.push("e.folder_id=?");values.push(Number(folder));}const [rows]=await auth.pool.query(`SELECT e.*,u.full_name actor_name,d.title document_title,DATE_FORMAT(e.created_at,'%Y-%m-%d %H:%i:%s') created_at_formatted FROM internal_document_events e LEFT JOIN users u ON u.id=e.actor_user_id LEFT JOIN internal_documents d ON d.id=e.document_id ${where.length?"WHERE "+where.join(" AND "):""} ORDER BY e.created_at DESC LIMIT 200`,values);return Response.json(rows);}

@@ -50,7 +50,12 @@ export async function POST(req, { params }) {
   const title = (fd.get("title") || "").toString().trim();
   const description = (fd.get("description") || "").toString().trim() || null;
   const visibility = (fd.get("visibility") || "general").toString();
-  const ownerUserId = visibility === "user_evidence" ? me.id : null;
+  let ownerUserId = visibility === "user_evidence" ? Number(fd.get("ownerUserId")) || me.id : null;
+  if (visibility === "user_evidence" && ownerUserId !== me.id) {
+    if (!me.isAdmin) return Response.json({ error: "No puedes cargar evidencias para otro usuario" }, { status: 403 });
+    const [[member]] = await pool.query("SELECT 1 ok FROM contract_users WHERE contract_id=? AND user_id=?", [contractId, ownerUserId]);
+    if (!member) return Response.json({ error: "El usuario no está asociado al contrato" }, { status: 400 });
+  }
   const file = fd.get("file");
   if (!file || typeof file !== "object" || file.size <= 0) return Response.json({ error: "Archivo requerido" }, { status: 400 });
 

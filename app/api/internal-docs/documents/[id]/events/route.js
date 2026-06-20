@@ -1,0 +1,2 @@
+import { requireInternalAdmin } from "@/lib/internalDocs";
+export async function GET(_req,{params}){const auth=await requireInternalAdmin();if(auth.response)return auth.response;const [rows]=await auth.pool.query(`SELECT e.*,u.full_name actor_name,DATE_FORMAT(e.created_at,'%Y-%m-%d %H:%i:%s') created_at_formatted FROM internal_document_events e LEFT JOIN users u ON u.id=e.actor_user_id WHERE e.document_id=? ORDER BY e.created_at DESC`,[params.id]);return Response.json(rows);}
