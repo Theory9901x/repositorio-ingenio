@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Archive, ArrowRight, BriefcaseBusiness, FileSearch, FileText,
+  Archive, ArrowRight, BarChart3, BriefcaseBusiness, FileSearch, FileText, ScanSearch,
   Grid2X2, LogOut, Map, MessageCircle, Search, Settings, ShieldCheck, UserRound, X,
 } from "lucide-react";
 import AdminDocumentPanel from "./AdminDocumentPanel";
@@ -14,6 +14,10 @@ import CommunityPanel from "./CommunityPanel";
 import AdminContentPanel from "./AdminContentPanel";
 import InternalDocumentationPanel from "./InternalDocumentationPanel";
 import AdminGovernancePanel from "./AdminGovernancePanel";
+import ExecutiveDashboardPanel from "./ExecutiveDashboardPanel";
+import AdvancedSearchPanel from "./AdvancedSearchPanel";
+import AlertsCenter from "./AlertsCenter";
+import AuditLogPanel from "./AuditLogPanel";
 
 const TIERS = [
   ["estrategico", "Procesos estratégicos", "#0017E8"],
@@ -21,7 +25,7 @@ const TIERS = [
   ["apoyo", "Procesos de apoyo", "#101A63"],
   ["evaluacion", "Procesos de evaluación", "#6477C8"],
 ];
-const SECTION_TITLES = { consultation: "Consulta documental", workspace: "Mi espacio / Plan", contracts: "Contratos / Rutas", internalDocs: "Documentación Interna", community:"Comunidad", profile:"Mi perfil", admin: "Administración" };
+const SECTION_TITLES = { consultation: "Consulta documental", advancedSearch:"Búsqueda avanzada", executive:"Tablero Gerencial", workspace: "Mi espacio / Plan", contracts: "Contratos / Rutas", internalDocs: "Documentación Interna", community:"Comunidad", profile:"Mi perfil", admin: "Administración" };
 const initialAuth = { full_name: "", cedula: "", email: "", password: "", cargo: "" };
 
 async function readJson(response) {
@@ -81,7 +85,7 @@ export default function DashboardApp() {
 
   useEffect(() => { loadUser().catch(() => setUser(null)); }, [loadUser]);
   useEffect(() => { if (user) loadAll(); }, [user, loadAll]);
-  useEffect(() => { if (!user?.isAdmin && ["admin", "internalDocs"].includes(section)) setSection("consultation"); }, [user, section]);
+  useEffect(() => { if (!user?.isAdmin && ["admin", "internalDocs", "executive"].includes(section)) setSection("consultation"); }, [user, section]);
 
   const procById = useCallback((id) => processes.find((p) => Number(p.id) === Number(id)), [processes]);
   const typeById = useCallback((id) => docTypes.find((t) => Number(t.id) === Number(id)), [docTypes]);
@@ -107,6 +111,8 @@ export default function DashboardApp() {
 
   const navItems = [
     ["consultation", FileSearch, "Consulta documental"],
+    ["advancedSearch", ScanSearch, "Búsqueda avanzada"],
+    ...(user.isAdmin ? [["executive", BarChart3, "Tablero Gerencial"]] : []),
     ["workspace", UserRound, "Mi espacio / Plan"],
     ["contracts", BriefcaseBusiness, "Contratos / Rutas"],
     ...(user.isAdmin ? [["internalDocs", Archive, "Documentación Interna"]] : []),
@@ -123,18 +129,20 @@ export default function DashboardApp() {
       <div className="user-card">{user.hasPhoto ? <img className="avatar user-avatar-photo" src={`/api/profile/photo/${user.id}`} alt="Foto de perfil" /> : <div className="avatar">{(user.full_name || user.email || "U").charAt(0).toUpperCase()}</div>}<div className="user-meta"><strong>{user.full_name || user.email}</strong><span>{user.cargo || "Usuario"}</span>{user.isAdmin && <em><ShieldCheck size={11} /> Administrador</em>}</div></div>
     </aside>
     <main className="main">
-      <header className="topbar"><div className="top-title"><span className="eyebrow mini">Repositorio Ingenio</span><strong>{selectedProcess ? selectedProcess.name : SECTION_TITLES[section]}</strong></div><div className="top-actions"><button className="chip-btn" onClick={loadAll} disabled={loadingData}>Actualizar</button><button className="chip-btn danger-lite" onClick={logout}><LogOut size={16} /> Salir</button></div></header>
+      <header className="topbar"><div className="top-title"><span className="eyebrow mini">Repositorio Ingenio</span><strong>{selectedProcess ? selectedProcess.name : SECTION_TITLES[section]}</strong></div><div className="top-actions"><AlertsCenter/><button className="chip-btn" onClick={loadAll} disabled={loadingData}>Actualizar</button><button className="chip-btn danger-lite" onClick={logout}><LogOut size={16} /> Salir</button></div></header>
       <div className="wrap dashboard-wrap">
         {dataError && <div className="error-banner">{dataError}<button onClick={loadAll}>Reintentar</button></div>}
         {section === "consultation" && (selectedProcess
           ? <ProcessDetailView process={selectedProcess} docs={docs} docTypes={docTypes} onBack={() => setSelectedProcess(null)} onOpenDoc={setDetail} />
           : <Consultation processes={matchingProcesses} docs={docs} query={query} setQuery={setQuery} view={view} setView={setView} countFor={countFor} onOpen={setSelectedProcess} mapFailed={mapFailed} setMapFailed={setMapFailed} />)}
         {section === "workspace" && <WorkspacePanel docs={docs} procById={procById} typeById={typeById} setDetail={setDetail} />}
+        {section === "advancedSearch" && <AdvancedSearchPanel />}
+        {section === "executive" && user.isAdmin && <ExecutiveDashboardPanel />}
         {section === "contracts" && <ContractRoutesPanel user={user} />}
         {section === "internalDocs" && user.isAdmin && <InternalDocumentationPanel user={user} />}
         {section === "community" && <CommunityPanel user={user} docs={docs} setDetail={setDetail} />}
         {section === "profile" && <ProfilePanel user={user} onChanged={loadUser} />}
-        {section === "admin" && user.isAdmin && <><AdminGovernancePanel currentUser={user} onChanged={loadAll}/><AdminContentPanel processes={processes} onChanged={loadAll}/><AdminDocumentPanel docs={docs} processes={processes} docTypes={docTypes} procById={procById} typeById={typeById} onChanged={loadAll} /></>}
+        {section === "admin" && user.isAdmin && <><AdminGovernancePanel currentUser={user} onChanged={loadAll}/><AuditLogPanel/><AdminContentPanel processes={processes} onChanged={loadAll}/><AdminDocumentPanel docs={docs} processes={processes} docTypes={docTypes} procById={procById} typeById={typeById} onChanged={loadAll} /></>}
       </div>
     </main>
     {detail && <DocumentViewer doc={detail} procById={procById} typeById={typeById} onClose={() => setDetail(null)} />}

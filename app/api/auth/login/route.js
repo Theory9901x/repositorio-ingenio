@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getPool } from "@/lib/db";
 import { signUserId, COOKIE } from "@/lib/auth";
+import { ensureAdminSchema } from "@/lib/adminSchema";
+import { logAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +13,9 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, error: "Faltan campos" }, { status: 400 });
   }
   const pool = getPool();
+  await ensureAdminSchema(pool);
   const [[user]] = await pool.query(
-    "SELECT id, password_hash FROM users WHERE email=?",
+    "SELECT id, password_hash FROM users WHERE email=? AND is_active=1",
     [email.toLowerCase().trim()]
   );
   if (!user) {
@@ -30,5 +33,6 @@ export async function POST(req) {
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });
+  await logAudit({ actorUserId:user.id, action:"login", entityType:"session", description:"Inicio de sesión" });
   return res;
 }
