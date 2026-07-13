@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, ChevronDown, ChevronRight, FileText, Folder, FolderOpen, Search } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, FileText, Folder, FolderOpen, Search, Inbox, FileClock } from "lucide-react";
 
 const TIER_LABELS = { estrategico: "Estratégico", misional: "Misional", apoyo: "Apoyo", evaluacion: "Evaluación" };
 const STATES = { vigente: "Vigente", no_publicado: "No publicado", obsoleto: "Obsoleto", anulado: "Anulado" };
@@ -25,7 +25,7 @@ export default function ProcessDetailView({ process, docs = [], docTypes = [], o
     <div className="process-tabs" role="tablist"><button className={tab === "general" ? "on" : ""} onClick={() => setTab("general")}>General</button><button className={tab === "caracterizacion" ? "on" : ""} onClick={() => setTab("caracterizacion")}>Caracterización</button><button className={tab === "documentacion" ? "on" : ""} onClick={() => setTab("documentacion")}>Documentación ({processDocs.length})</button></div>
     {tab === "general" && <GeneralProcess process={process} docs={processDocs} />}
     {tab === "caracterizacion" && <Characterization process={process} />}
-    {tab === "documentacion" && <div className="process-docs-panel"><div className="searchbar wide"><Search size={16} /><input placeholder="Buscar dentro de este proceso…" value={query} onChange={(event) => setQuery(event.target.value)} /></div><div className="doc-tree"><div className="tree-title"><FolderOpen size={18} /> Documentación del proceso</div>{grouped.map((group) => { const isOpen = open[group.type.id] !== false; return <div className="doc-folder" key={group.type.id}><button className="folder-line" onClick={() => setOpen({ ...open, [group.type.id]: !isOpen })}>{isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}<Folder size={17} /><strong>{group.type.name}</strong><span>{group.items.length}</span></button>{isOpen && <div className="folder-docs">{group.items.map((doc) => <button className="tree-doc" key={doc.id} onClick={() => onOpenDoc(doc)}><FileText size={17} /><span className="code">{doc.code}</span><strong>{doc.name}</strong><em>V {doc.version || "—"}</em><small className={`badge st-${doc.state}`}>{STATES[doc.state] || doc.state}</small></button>)}</div>}</div>; })}{!grouped.length && <div className="empty-state"><h3>Sin documentos</h3><p>No hay documentos asociados o no coinciden con la búsqueda.</p></div>}</div></div>}
+    {tab === "documentacion" && <div className="process-docs-panel"><div className="searchbar wide"><Search size={16} /><input placeholder="Buscar dentro de este proceso…" value={query} onChange={(event) => setQuery(event.target.value)} /></div><div className="doc-tree"><div className="tree-title"><FolderOpen size={18} /> Documentación del proceso</div>{grouped.map((group) => { const isOpen = open[group.type.id] !== false; return <div className="doc-folder" key={group.type.id}><button className="folder-line" onClick={() => setOpen({ ...open, [group.type.id]: !isOpen })}>{isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}<Folder size={17} /><strong>{group.type.name}</strong><span>{group.items.length}</span></button>{isOpen && <div className="folder-docs">{group.items.map((doc) => <button className="tree-doc" key={doc.id} onClick={() => onOpenDoc(doc)}><FileText size={17} /><span className="code">{doc.code}</span><strong>{doc.name}</strong><em>V {doc.version || "—"}</em><small className={`badge st-${doc.state}`}>{STATES[doc.state] || doc.state}</small></button>)}</div>}</div>; })}{!grouped.length && <div className="empty-state"><span className="empty-ico"><Inbox size={24} /></span><h3>Sin documentos</h3><p>No hay documentos asociados o no coinciden con la búsqueda.</p></div>}</div></div>}
   </section>;
 }
 
@@ -34,6 +34,6 @@ function GeneralProcess({ process, docs }) {
 }
 
 function Characterization({ process }) {
-  if(!process.is_published)return <div className="empty-state"><h3>Información pendiente de publicación</h3><p>Administración aún no ha publicado la caracterización oficial de este proceso.</p></div>;
+  if(!process.is_published)return <div className="empty-state"><span className="empty-ico"><FileClock size={24} /></span><h3>Información pendiente de publicación</h3><p>Administración aún no ha publicado la caracterización oficial de este proceso.</p></div>;
   return <div className="process-characterization"><article className="process-info-card"><h3>Objetivo</h3><p>{process.objective || "Sin información registrada."}</p></article><article className="process-info-card"><h3>Dueño del proceso</h3><p>{process.owner || "Sin información registrada."}</p></article><article className="process-info-card"><h3>Alcance</h3><p>{process.scope || "Sin información registrada."}</p></article><article className="process-info-card"><h3>Subprocesos</h3><div className="subprocess-list">{process.subprocesses?.length?process.subprocesses.map((item) => <span key={item}>{item}</span>):<p>Sin subprocesos registrados.</p>}</div></article></div>;
 }
