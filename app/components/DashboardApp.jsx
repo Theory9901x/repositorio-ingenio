@@ -88,6 +88,11 @@ export default function DashboardApp() {
   useEffect(() => { loadUser().catch(() => setUser(null)); }, [loadUser]);
   useEffect(() => { if (user) loadAll(); }, [user, loadAll]);
   useEffect(() => { if (!user?.isAdmin && ["admin", "internalDocs", "executive"].includes(section)) setSection("consultation"); }, [user, section]);
+  useEffect(() => {
+    if (!selectedProcess) return;
+    const fresh = processes.find((p) => Number(p.id) === Number(selectedProcess.id));
+    if (fresh && fresh !== selectedProcess) setSelectedProcess(fresh);
+  }, [processes, selectedProcess]);
 
   const procById = useCallback((id) => processes.find((p) => Number(p.id) === Number(id)), [processes]);
   const typeById = useCallback((id) => docTypes.find((t) => Number(t.id) === Number(id)), [docTypes]);
@@ -135,7 +140,7 @@ export default function DashboardApp() {
       <div className="wrap dashboard-wrap">
         {dataError && <div className="error-banner">{dataError}<button onClick={loadAll}>Reintentar</button></div>}
         {section === "consultation" && (selectedProcess
-          ? <ProcessDetailView process={selectedProcess} docs={docs} docTypes={docTypes} onBack={() => setSelectedProcess(null)} onOpenDoc={setDetail} />
+          ? <ProcessDetailView process={selectedProcess} docs={docs} docTypes={docTypes} user={user} onChanged={loadAll} onBack={() => setSelectedProcess(null)} onOpenDoc={setDetail} />
           : <Consultation processes={matchingProcesses} docs={docs} query={query} setQuery={setQuery} view={view} setView={setView} countFor={countFor} onOpen={setSelectedProcess} mapFailed={mapFailed} setMapFailed={setMapFailed} />)}
         {section === "workspace" && <WorkspacePanel docs={docs} procById={procById} typeById={typeById} setDetail={setDetail} />}
         {section === "advancedSearch" && <AdvancedSearchPanel />}
