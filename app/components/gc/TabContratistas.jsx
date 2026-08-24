@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ClipboardList, ShieldCheck, UserMinus, UserPlus, Users } from "lucide-react";
+import { ClipboardList, Copy, KeyRound, ShieldCheck, UserMinus, UserPlus, Users } from "lucide-react";
 import { api, enviarJson } from "./api";
 import { invalidar, useDatos } from "./cache";
 import { Cargando, Confirmar, Drawer, Vacio, fmtFecha, iniciales } from "./ui";
@@ -17,6 +17,9 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
   const [drawer, setDrawer] = useState(null);
   const [confirmar, setConfirmar] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  const [alta, setAlta] = useState(null);        // formulario de usuario nuevo
+  const [credencial, setCredencial] = useState(null); // se muestra una sola vez
+  const [reinicio, setReinicio] = useState(null);
 
   const { datos: lista, refrescar } = useDatos(`/api/gc/contracts/${contratoId}/participants`, { onError: (e) => avisar(e.message, "error") });
   const cargar = useCallback(() => { invalidar(`/api/gc/contracts/${contratoId}/`); return refrescar(); }, [contratoId, refrescar]);
@@ -36,6 +39,29 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
     } catch (e) { avisar(e.message, "error"); } finally { setGuardando(false); }
   }
 
+  // Crea la cuenta y la asocia al contrato en un solo paso.
+  async function crearUsuario() {
+    setGuardando(true);
+    try {
+      const r = await enviarJson("/api/gc/users", "POST", alta);
+      await enviarJson(`/api/gc/contracts/${contratoId}/participants`, "POST", {
+        user_id: r.id, role_in_contract: alta.role_in_contract, specialty: alta.cargo, status: "activo",
+      });
+      setCredencial({ ...r, titulo: "Usuario creado" });
+      setAlta(null);
+      setDirectorio(await api(`/api/gc/users?contractId=${contratoId}`).catch(() => directorio));
+      cargar();
+    } catch (e) { avisar(e.message, "error"); } finally { setGuardando(false); }
+  }
+
+  async function restablecer(p) {
+    try {
+      const r = await enviarJson("/api/gc/users", "PATCH", { userId: p.user_id });
+      setCredencial({ ...r, titulo: "Contraseña restablecida" });
+      setReinicio(null);
+    } catch (e) { avisar(e.message, "error"); setReinicio(null); }
+  }
+
   async function retirar(p) {
     try {
       await api(`/api/gc/contracts/${contratoId}/participants?userId=${p.user_id}`, { method: "DELETE" });
@@ -47,6 +73,7 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
   if (!lista) return <section className="gc-card"><Cargando filas={4} /></section>;
 
   const puedeGestionar = detalle.permisos.includes("PARTICIPANT_MANAGE");
+  const esAdmin = detalle.rol === "ADMIN";
   const yaAsociados = new Set(lista.map((p) => p.user_id));
 
   return (
@@ -54,7 +81,14 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
       <section className="gc-card flush">
         <header className="gc-card-title" style={{ padding: "16px 18px 0", margin: 0 }}>
           <h3>Participantes del contrato</h3>
-          {puedeGestionar && <button className="gc-btn primary" onClick={abrirAlta}><UserPlus size={15} /> Asociar participante</button>}
+          <div className="gc-actions">
+            {esAdmin && (
+              <button className="gc-btn ghost" onClick={() => setAlta({ role_in_contract: "contratista", cargo: "" })}>
+                <UserPlus size={15} /> Crear usuario nuevo
+              </button>
+            )}
+            {puedeGestionar && <button className="gc-btn primary" onClick={abrirAlta}><UserPlus size={15} /> Asociar participante</button>}
+          </div>
         </header>
 
         {lista.length ? (
@@ -83,6 +117,7 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
                 <div className="gc-rowact">
                   <button className="gc-icbtn" title="Ver actividades" onClick={() => ir("contrato", contratoId, "actividades", p.user_id)}><ClipboardList size={14} /></button>
                   <button className="gc-icbtn" title="Ver evidencias" onClick={() => ir("contrato", contratoId, "evidencias", p.user_id)}><ShieldCheck size={14} /></button>
+                  {esAdmin && <button className="gc-icbtn" title="Restablecer contraseña" onClick={() => setReinicio(p)}><KeyRound size={14} /></button>}
                   {puedeGestionar && <button className="gc-icbtn danger" title="Retirar" onClick={() => setConfirmar(p)}><UserMinus size={14} /></button>}
                 </div>
               </div>
@@ -139,6 +174,91 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
           </div>
         )}
       </Drawer>
+
+      {/* Alta de usuario nuevo */}
+      <Drawer abierto={!!alta} titulo="Crear usuario nuevo"
+        subtitulo="Se genera una contraseña temporal y la persona queda asociada a este contrato."
+        onClose={() => setAlta(null)}
+        pie={<>
+          <button className="gc-btn ghost" onClick={() => setAlta(null)}>Cancelar</button>
+          <button className="gc-btn primary" disabled={guardando || !alta?.full_name?.trim() || !alta?.email?.trim() || !alta?.cedula?.trim()} onClick={crearUsuario}>
+            {guardando ? "Creando…" : "Crear usuario"}
+          </button>
+        </>}>
+        {alta && (
+          <div className="gc-form c2">
+            <div className="gc-field gc-full">
+              <label>Nombre completo *</label>
+              <input value={alta.full_name || ""} onChange={(e) => setAlta({ ...alta, full_name: e.target.value })}
+                placeholder="Natalia Forero Bejarano" autoFocus />
+            </div>
+            <div className="gc-field">
+              <label>Correo electrónico *</label>
+              <input type="email" value={alta.email || ""} onChange={(e) => setAlta({ ...alta, email: e.target.value })}
+                placeholder="natalia@correo.com" />
+              <span className="hint">Es el usuario con el que inicia sesión.</span>
+            </div>
+            <div className="gc-field">
+              <label>Cédula *</label>
+              <input value={alta.cedula || ""} onChange={(e) => setAlta({ ...alta, cedula: e.target.value })} placeholder="1010101010" />
+            </div>
+            <div className="gc-field">
+              <label>Cargo</label>
+              <input value={alta.cargo || ""} onChange={(e) => setAlta({ ...alta, cargo: e.target.value })} placeholder="Supervisora de contrato" />
+            </div>
+            <div className="gc-field">
+              <label>Rol en este contrato</label>
+              <select value={alta.role_in_contract} onChange={(e) => setAlta({ ...alta, role_in_contract: e.target.value })}>
+                {ROLES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </div>
+            <div className="gc-field gc-full">
+              <label>Rol en el sistema</label>
+              <select value={alta.role || "usuario"} onChange={(e) => setAlta({ ...alta, role: e.target.value })}>
+                <option value="usuario">Usuario</option>
+                <option value="admin">Administrador (acceso total a la plataforma)</option>
+              </select>
+              <span className="hint">El rol del contrato define qué puede hacer dentro de él; el del sistema, en toda la plataforma.</span>
+            </div>
+          </div>
+        )}
+      </Drawer>
+
+      {/* Credencial: se muestra una única vez */}
+      {credencial && (
+        <>
+          <div className="gc-overlay" onClick={() => setCredencial(null)} />
+          <div className="gc-modal" style={{ maxWidth: 460 }}>
+            <h3>{credencial.titulo}</h3>
+            <p>
+              Entrega estos datos a <b>{credencial.full_name}</b>. La contraseña no se vuelve a mostrar:
+              si se pierde, hay que restablecerla de nuevo.
+            </p>
+            <div style={{ display: "grid", gap: 10, background: "rgba(123,92,250,.08)", borderRadius: 14, padding: 15, marginBottom: 16 }}>
+              <div>
+                <span style={{ display: "block", fontSize: 9.5, fontWeight: 800, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--gc-muted)" }}>Usuario</span>
+                <b style={{ fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>{credencial.email}</b>
+              </div>
+              <div>
+                <span style={{ display: "block", fontSize: 9.5, fontWeight: 800, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--gc-muted)" }}>Contraseña temporal</span>
+                <b style={{ fontSize: 16, fontFamily: "'JetBrains Mono', monospace", letterSpacing: ".02em" }}>{credencial.clave}</b>
+              </div>
+            </div>
+            <div className="gc-modal-foot">
+              <button className="gc-btn ghost" onClick={() => {
+                navigator.clipboard?.writeText(`Usuario: ${credencial.email}\nContraseña: ${credencial.clave}`);
+                avisar("Credenciales copiadas");
+              }}><Copy size={14} /> Copiar</button>
+              <button className="gc-btn primary" onClick={() => setCredencial(null)}>Entendido</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      <Confirmar abierto={!!reinicio} titulo="Restablecer contraseña"
+        texto={`Se generará una contraseña temporal para ${reinicio?.full_name}. La actual dejará de funcionar de inmediato.`}
+        etiqueta="Restablecer" tono="warn"
+        onClose={() => setReinicio(null)} onConfirmar={() => restablecer(reinicio)} />
 
       <Confirmar abierto={!!confirmar} titulo="Retirar participante"
         texto={`Se retirará a ${confirmar?.full_name} del contrato. Solo es posible si no tiene actividades ni evidencias registradas.`}

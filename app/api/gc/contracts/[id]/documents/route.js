@@ -15,7 +15,7 @@ export async function GET(_req, { params }) {
   const args = rol === ROL.TRABAJADOR ? [contractId, me.id] : [contractId];
 
   const [rows] = await pool.query(
-    `SELECT f.id, f.contract_id, f.section, f.title, f.description, f.file_name, f.mime_type,
+    `SELECT f.id, f.contract_id, f.section, f.folder_id, f.title, f.description, f.file_name, f.mime_type,
             f.size_bytes, f.visibility, f.owner_user_id, f.uploaded_by,
             DATE_FORMAT(f.created_at,'%Y-%m-%d %H:%i') created_at,
             u.full_name AS uploaded_by_name, o.full_name AS owner_name
@@ -47,11 +47,17 @@ export async function POST(req, { params }) {
       visibility = "user_evidence";
     }
 
+    const folderId = fd.get("folderId") ? Number(fd.get("folderId")) : null;
+    if (folderId) {
+      const [[carpeta]] = await pool.query("SELECT id FROM contract_document_folders WHERE id=? AND contract_id=?", [folderId, contractId]);
+      if (!carpeta) return Response.json({ error: "La carpeta indicada no existe" }, { status: 400 });
+    }
+
     const guardado = await guardarArchivo(fd.get("file"), `documentos/${contractId}`, me.id);
     const [r] = await pool.query(
-      `INSERT INTO contract_files (contract_id, uploaded_by, section, title, description, file_name, file_path, mime_type, size_bytes, visibility, owner_user_id)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-      [contractId, me.id, section, title || guardado.file_name, (fd.get("description") || "").toString() || null,
+      `INSERT INTO contract_files (contract_id, uploaded_by, section, folder_id, title, description, file_name, file_path, mime_type, size_bytes, visibility, owner_user_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [contractId, me.id, section, folderId, title || guardado.file_name, (fd.get("description") || "").toString() || null,
        guardado.file_name, guardado.file_path, guardado.mime_type, guardado.size_bytes, visibility, ownerUserId]
     );
     await auditar(pool, { me, contractId, entidad: "document", entidadId: r.insertId, accion: "FILE_UPLOADED", descripcion: `Documento cargado: ${title || guardado.file_name}`, req });
@@ -60,6 +66,29 @@ export async function POST(req, { params }) {
     if (e instanceof FileError) return Response.json({ error: e.message }, { status: e.status });
     return Response.json({ error: "No se pudo cargar el documento: " + e.message }, { status: 500 });
   }
+}
+
+// Mover un documento a otra carpeta.
+export async function PUT(req, { params }) {
+  const ctx = await contexto(params.id, "DOCUMENT_UPLOAD");
+  if (ctx.error) return ctx.error;
+  const { pool, me, contractId } = ctx;
+  const b = await req.json().catch(() => ({}));
+  const docId = Number(b.docId);
+  const folderId = b.folder_id ? Number(b.folder_id) : null;
+  if (!docId) return Response.json({ error: "Documento no indicado" }, { status: 400 });
+
+  if (folderId) {
+    const [[carpeta]] = await pool.query(
+      "SELECT id FROM contract_document_folders WHERE id=? AND contract_id=?", [folderId, contractId]);
+    if (!carpeta) return Response.json({ error: "La carpeta indicada no existe" }, { status: 400 });
+  }
+  const [r] = await pool.query(
+    "UPDATE contract_files SET folder_id=? WHERE id=? AND contract_id=?", [folderId, docId, contractId]);
+  if (!r.affectedRows) return Response.json({ error: "Documento no encontrado" }, { status: 404 });
+
+  await auditar(pool, { me, contractId, entidad: "document", entidadId: docId, accion: "FILE_MOVED", descripcion: "Documento movido de carpeta" });
+  return Response.json({ ok: true });
 }
 
 export async function DELETE(req, { params }) {
