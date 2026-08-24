@@ -180,7 +180,7 @@
 .me-explorer-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
 .me-chip{
   display:inline-flex;align-items:center;gap:7px;border:1px solid var(--me-line);border-radius:11px;
-  background:rgba(255,255,255,.85);color:var(--me-soft);font-size:12.5px;font-weight:800;padding:9px 13px;
+  background:rgba(255,255,255,.85);color:var(--me-soft);font-size:12.5px;font-weight:800;padding:9px 13px;white-space:nowrap;
   transition:color .2s var(--me-ease),border-color .2s var(--me-ease),transform .2s var(--me-ease);
 }
 .me-chip:hover{color:var(--me-violet);border-color:rgba(124,92,252,.35);transform:translateY(-1px)}
@@ -196,7 +196,8 @@
 .me-frow{border-bottom:1px solid rgba(124,92,252,.07);transition:background .18s var(--me-ease)}
 .me-frow:hover{background:linear-gradient(95deg,rgba(79,107,255,.05),rgba(124,92,252,.05))}
 .me-fname{display:flex;align-items:center;gap:12px;min-width:0}
-.me-fname b{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.me-fname>div{flex:1;min-width:0}
+.me-fname b{display:block;font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .me-fname small{display:block;font-size:11px;color:var(--me-muted);font-weight:600;margin-top:1px}
 .me-ficon{width:36px;height:36px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:800}
 .me-ficon.pdf{background:linear-gradient(135deg,#ff6b6b,#e23b5f)}
