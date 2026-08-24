@@ -280,7 +280,63 @@ function ProcessCard({ process, color, count, onOpen }) {
 }
 
 function InteractiveMap({ processes, countFor, onOpen, failed, setFailed }) {
-  return <div className="process-map"><div className="map-canvas">{!failed && <img src="/branding/mapa-procesos-grupo-ingenio.jpg" alt="Mapa de procesos de Grupo Ingenio" onError={() => setFailed(true)} />}{failed && <div className="map-fallback"><Map size={36} /><strong>Mapa navegable por categorías</strong><span>La imagen institucional aún no está disponible; todos los procesos siguen accesibles.</span></div>}</div><div className="map-layers">{TIERS.map(([tier, label, color]) => { const items = processes.filter((p) => p.tier === tier); if (!items.length) return null; return <div className="map-layer" key={tier} style={{ "--layer": color }}><h3>{label}</h3><div>{items.map((process) => <button key={process.id} onClick={() => onOpen(process)}><b>{process.sigla}</b><span>{process.name}</span><em>{countFor(process.id)}</em></button>)}</div></div>; })}</div></div>;
+  const total = processes.length;
+  return (
+    <div className="mapa">
+      {/* Lámina con el mapa institucional */}
+      <aside className="mapa-lienzo">
+        <div className="mapa-lienzo-cab">
+          <span className="consulta-eyebrow"><Map size={12} /> Mapa institucional</span>
+          <p>Arquitectura de procesos de Grupo Ingenio. Elige un proceso en la lista para abrir su ficha.</p>
+        </div>
+        <div className="mapa-imagen">
+          {!failed
+            ? <img src="/branding/mapa-procesos-grupo-ingenio.jpg" alt="Mapa de procesos de Grupo Ingenio" onError={() => setFailed(true)} />
+            : (
+              <div className="mapa-sin-imagen">
+                <i><Map size={30} /></i>
+                <strong>Mapa navegable por categorías</strong>
+                <span>La imagen institucional aún no está disponible; todos los procesos siguen accesibles.</span>
+              </div>
+            )}
+        </div>
+        <footer className="mapa-resumen">
+          <span><Workflow size={13} /> {total} procesos</span>
+          <span><FileText size={13} /> {processes.reduce((a, p) => a + countFor(p.id), 0)} documentos</span>
+        </footer>
+      </aside>
+
+      {/* Familias de procesos */}
+      <div className="mapa-familias">
+        {TIERS.map(([tier, label, color]) => {
+          const items = processes.filter((p) => p.tier === tier);
+          if (!items.length) return null;
+          return (
+            <section className="mapa-familia" key={tier} style={{ "--tier-color": color }}>
+              <header>
+                <i />
+                <h3>{label}</h3>
+                <span>{items.length}</span>
+              </header>
+              <div className="mapa-lista">
+                {items.map((process) => {
+                  const n = countFor(process.id);
+                  return (
+                    <button key={process.id} onClick={() => onOpen(process)}>
+                      <span className="mapa-sigla">{process.sigla}</span>
+                      <span className="mapa-nombre">{process.name}</span>
+                      <span className={`mapa-n${n ? " con" : ""}`}>{n}</span>
+                      <ArrowRight size={14} className="mapa-ir" />
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function DocumentViewer({ doc, procById, typeById, onClose }) {
