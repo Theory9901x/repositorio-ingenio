@@ -5,7 +5,7 @@ import {
   Check, Download, Eye, ListChecks, Plus, RefreshCw, ShieldCheck, Trash2, Upload, Users, X,
 } from "lucide-react";
 import { api, enviarForm, enviarJson, urlArchivo } from "./api";
-import { invalidar, useDatos } from "./cache";
+import { invalidar, sembrar, useDatos } from "./cache";
 import { Anillo, Cargando, Confirmar, Drawer, Estado, IconoArchivo, Vacio, fmtFecha, fmtFechaHora, fmtTam, iniciales } from "./ui";
 
 const COLUMNAS = "minmax(0,1fr) 130px 150px 120px 120px";
@@ -27,9 +27,14 @@ export default function TabEvidencias({ contratoId, detalle, avisar, setVisor, r
   const { datos, refrescar } = useDatos(url, { onError: (e) => avisar(e.message, "error") });
   const participantes = datos?.participantes ?? (esTrabajador ? [] : null);
 
+  // El servidor elige el contratista por defecto y ya devuelve su checklist:
+  // se siembra bajo la URL con userId para no repetir la petición.
   useEffect(() => {
-    if (!seleccion && datos?.userId) setSeleccion(datos.userId);
-  }, [datos, seleccion]);
+    if (!seleccion && datos?.userId) {
+      sembrar(`/api/gc/contracts/${contratoId}/evidences?todo=1&userId=${datos.userId}`, datos);
+      setSeleccion(datos.userId);
+    }
+  }, [datos, seleccion, contratoId]);
 
   const cargar = useCallback(() => {
     invalidar(`/api/gc/contracts/${contratoId}/evidences`);

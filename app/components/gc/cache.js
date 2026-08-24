@@ -24,6 +24,12 @@ export function enCache(url) {
   return memoria.has(url) ? memoria.get(url).datos : null;
 }
 
+// Guarda datos que ya tenemos bajo otra URL equivalente, para no volver a
+// pedir al servidor algo que acaba de responder.
+export function sembrar(url, datos) {
+  if (url && datos !== undefined) memoria.set(url, { datos, ts: Date.now() });
+}
+
 // Pide una URL reutilizando la petición si ya está en curso.
 export function pedir(url, { refrescar = false } = {}) {
   if (!refrescar) {

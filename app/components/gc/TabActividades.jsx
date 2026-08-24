@@ -5,7 +5,7 @@ import {
   Check, ClipboardList, Download, Eye, FileText, Paperclip, Plus, Send, Trash2, Upload, Users, X,
 } from "lucide-react";
 import { api, enviarForm, enviarJson, urlArchivo } from "./api";
-import { invalidar, useDatos } from "./cache";
+import { invalidar, sembrar, useDatos } from "./cache";
 import {
   Cargando, Confirmar, Drawer, Estado, IconoArchivo, MESES, Vacio,
   fmtFecha, fmtFechaHora, fmtTam, iniciales,
@@ -42,9 +42,14 @@ export default function TabActividades({ contratoId, detalle, avisar, setVisor, 
   }, [contratoId, refrescar]);
 
   // El contratista por defecto lo decide el servidor en la primera carga.
+  // Sus datos ya vienen en esa respuesta, así que se siembran bajo la URL
+  // que incluye el userId para no repetir la petición al fijarlo.
   useEffect(() => {
-    if (!userId && datos?.userId) setUserId(datos.userId);
-  }, [datos, userId]);
+    if (!userId && datos?.userId) {
+      sembrar(`/api/gc/contracts/${contratoId}/activities?todo=1&userId=${datos.userId}&year=${year}&month=${month}`, datos);
+      setUserId(datos.userId);
+    }
+  }, [datos, userId, contratoId, year, month]);
 
   useEffect(() => { if (userId) ir?.(userId, year, month); }, [userId, year, month]); // eslint-disable-line
 
