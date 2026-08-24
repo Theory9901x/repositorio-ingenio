@@ -358,6 +358,8 @@
   animation:mePop .3s var(--me-ease);backdrop-filter:blur(10px);
 }
 .me-toast svg{color:var(--me-cyan)}
+.me-toast.error{background:rgba(180,32,60,.95);box-shadow:0 20px 50px -20px rgba(180,32,60,.55)}
+.me-toast.error svg{color:#ffd0d8}
 
 .me-loading{min-height:100vh;display:flex;align-items:center;justify-content:center;gap:12px;color:var(--me-muted);font-size:14px;font-weight:700;font-family:'Hanken Grotesk',sans-serif}
 .me-spinner{width:22px;height:22px;border-radius:50%;border:3px solid rgba(124,92,252,.2);border-top-color:var(--me-violet);animation:meSpin .8s linear infinite}

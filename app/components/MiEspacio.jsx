@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft, Bell, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Download,
+  AlertCircle, ArrowLeft, Bell, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Download,
   Eye, FileArchive, FileImage, FileSpreadsheet, FileText, Folder, FolderOpen,
   FolderPlus, Grid2X2, Home, Link2, List, LogOut, MoreHorizontal, Pencil, Plus,
   Presentation, Search, Settings, Sparkles, Star, Trash2, Upload,
@@ -116,14 +116,39 @@ export default function MiEspacio({ user }) {
   }, []);
   useEffect(() => { setPage(1); }, [selFolder, query, filters, view]);
 
-  function notify(msg) { setToast(msg); setTimeout(() => setToast(null), 2600); }
+  function notify(msg, tipo = "ok") { setToast({ msg, tipo }); setTimeout(() => setToast(null), tipo === "error" ? 4200 : 2600); }
   function setPref(patch) {
     const prefs = { ...loadLS("me-prefs", {}), ...patch };
     saveLS("me-prefs", prefs);
   }
 
+  async function errorOf(res, fallback) {
+    const data = await res.json().catch(() => ({}));
+    return data.error || `${fallback} (error ${res.status})`;
+  }
+
   /* ---------- carpetas ---------- */
   const childrenOf = (pid) => folders.filter((f) => (f.parent_id || null) === pid);
+  // Ids de la carpeta indicada y de todas sus subcarpetas.
+  function descendants(id) {
+    const ids = new Set([id]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const f of folders) {
+        if (f.parent_id && ids.has(f.parent_id) && !ids.has(f.id)) { ids.add(f.id); grew = true; }
+      }
+    }
+    return ids;
+  }
+  // Qué se eliminaría al borrar una carpeta.
+  function contentsOf(id) {
+    const ids = descendants(id);
+    return {
+      subcarpetas: ids.size - 1,
+      archivos: files.filter((f) => ids.has(f.folder_id)).length,
+    };
+  }
   const filesIn = (fid) => files.filter((f) => (f.folder_id || null) === fid);
   const folderById = (id) => folders.find((f) => f.id === id);
   const crumbs = useMemo(() => {
@@ -141,17 +166,20 @@ export default function MiEspacio({ user }) {
     notify("Carpeta creada"); load();
   }
   async function renameFolder(id, name) {
-    await fetch(`/api/workspace/folders/${id}`, {
+    const res = await fetch(`/api/workspace/folders/${id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
     });
+    if (!res.ok) return notify(await errorOf(res, "No se pudo renombrar la carpeta"), "error");
     notify("Carpeta renombrada"); load();
   }
   async function deleteFolder(id) {
     const res = await fetch(`/api/workspace/folders/${id}`, { method: "DELETE" });
-    if (!res.ok) { const e = await res.json().catch(() => ({})); notify(e.error || "No se pudo eliminar la carpeta"); return; }
-    if (selFolder === id) setSelFolder(null);
-    notify("Carpeta eliminada"); load();
+    if (!res.ok) return notify(await errorOf(res, "No se pudo eliminar la carpeta"), "error");
+    const data = await res.json().catch(() => ({}));
+    if (selFolder === id || descendants(id).has(selFolder)) setSelFolder(null);
+    notify(data.archivos ? `Carpeta eliminada · ${data.archivos} archivo(s)` : "Carpeta eliminada");
+    load();
   }
 
   /* ---------- archivos ---------- */
@@ -163,13 +191,15 @@ export default function MiEspacio({ user }) {
     if (selFolder) fd.set("folderId", selFolder);
     fd.set("title", fileObj.name);
     fd.set("file", fileObj);
-    await fetch("/api/workspace/files", { method: "POST", body: fd });
+    const res = await fetch("/api/workspace/files", { method: "POST", body: fd });
     setUploading(false);
+    if (!res.ok) return notify(await errorOf(res, "No se pudo subir el archivo"), "error");
     notify("Archivo agregado a tu espacio");
     load();
   }
   async function deleteFile(f) {
-    await fetch(`/api/workspace/files/${f.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/workspace/files/${f.id}`, { method: "DELETE" });
+    if (!res.ok) return notify(await errorOf(res, "No se pudo eliminar el archivo"), "error");
     const log = [{ title: f.title || f.file_name, ext: extOf(f), at: new Date().toISOString().slice(0, 16).replace("T", " ") }, ...trashLog].slice(0, 30);
     setTrashLog(log); saveLS("me-trash-log", log);
     notify("Archivo eliminado"); load();
@@ -751,7 +781,17 @@ export default function MiEspacio({ user }) {
             {modal.type === "del-folder" && (
               <>
                 <h3>Eliminar carpeta</h3>
-                <p>¿Eliminar «{modal.name}»? Solo es posible eliminar carpetas vacías.</p>
+                <p>
+                  ¿Eliminar «{modal.name}»?
+                  {(() => {
+                    const { subcarpetas, archivos } = contentsOf(modal.id);
+                    if (!subcarpetas && !archivos) return " La carpeta está vacía.";
+                    const partes = [];
+                    if (subcarpetas) partes.push(`${subcarpetas} subcarpeta${subcarpetas > 1 ? "s" : ""}`);
+                    if (archivos) partes.push(`${archivos} archivo${archivos > 1 ? "s" : ""}`);
+                    return ` Se eliminarán también ${partes.join(" y ")}. Esta acción es permanente.`;
+                  })()}
+                </p>
                 <div className="me-modal-foot">
                   <button className="me-btn ghost" onClick={() => setModal(null)}>Cancelar</button>
                   <button className="me-btn danger" onClick={() => { deleteFolder(modal.id); setModal(null); }}><Trash2 size={14} /> Eliminar</button>
@@ -772,8 +812,13 @@ export default function MiEspacio({ user }) {
         </div>
       )}
 
-      {toast && <div className="me-toast"><Check size={15} /> {toast}</div>}
+      {toast && (
+        <div className={`me-toast ${toast.tipo === "error" ? "error" : ""}`}>
+          {toast.tipo === "error" ? <AlertCircle size={15} /> : <Check size={15} />} {toast.msg}
+        </div>
+      )}
       <EmbeddedFileViewer item={viewer} onClose={() => setViewer(null)} />
     </div>
   );
 }
+
