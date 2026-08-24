@@ -1,0 +1,372 @@
+/* ==========================================================================
+   Consulta documental — superficie de cristal.
+
+   La vista de entrada al repositorio se apoya en capas translúcidas sobre un
+   fondo con luz propia: orbes de color difuminados detrás y tarjetas que
+   dejan pasar ese color con desenfoque. Cada nivel de la jerarquía tiene su
+   propio grado de opacidad, para que la pantalla se lea de un vistazo.
+   ========================================================================== */
+
+.consulta {
+  --vidrio: rgba(255, 255, 255, .58);
+  --vidrio-fuerte: rgba(255, 255, 255, .74);
+  --vidrio-tenue: rgba(255, 255, 255, .38);
+  --borde-vidrio: rgba(255, 255, 255, .75);
+  --borde-sutil: rgba(160, 180, 235, .3);
+  --sombra-vidrio: 0 20px 50px -28px rgba(16, 26, 99, .38);
+  --sombra-alta: 0 34px 70px -30px rgba(0, 23, 232, .38);
+  position: relative;
+  padding-top: 4px;
+}
+
+/* ---------- Luz de fondo ---------- */
+/* Los orbes viven detrás de todo y son lo que las tarjetas dejan entrever. */
+.consulta-luz {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.consulta-luz i {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: .55;
+  display: block;
+}
+.consulta-luz i:nth-child(1) {
+  width: 460px; height: 460px; top: -160px; left: -80px;
+  background: radial-gradient(circle, rgba(34, 215, 223, .75), transparent 68%);
+}
+.consulta-luz i:nth-child(2) {
+  width: 520px; height: 520px; top: -110px; right: -140px;
+  background: radial-gradient(circle, rgba(0, 23, 232, .45), transparent 66%);
+}
+.consulta-luz i:nth-child(3) {
+  width: 420px; height: 420px; bottom: -180px; left: 32%;
+  background: radial-gradient(circle, rgba(123, 92, 250, .38), transparent 68%);
+}
+.consulta > * { position: relative; z-index: 1; }
+
+/* ---------- Portada ---------- */
+.consulta-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 30px;
+  border: 1px solid var(--borde-vidrio);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, .72), rgba(232, 240, 255, .42));
+  backdrop-filter: blur(26px) saturate(150%);
+  -webkit-backdrop-filter: blur(26px) saturate(150%);
+  box-shadow: var(--sombra-vidrio), inset 0 1px 0 rgba(255, 255, 255, .9);
+  padding: 38px 38px 30px;
+  margin-bottom: 30px;
+}
+/* Brillo superior, como el canto de una lámina de vidrio. */
+.consulta-hero::before {
+  content: "";
+  position: absolute; inset: 0 0 auto 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .95), transparent);
+}
+.consulta-hero-txt { max-width: 640px; }
+.consulta-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--brand-blue);
+  background: rgba(0, 23, 232, .08);
+  border: 1px solid rgba(0, 23, 232, .14);
+  border-radius: 999px;
+  padding: 7px 14px;
+  margin-bottom: 18px;
+}
+.consulta-hero h2 {
+  font-family: 'Bricolage Grotesque';
+  font-weight: 800;
+  font-size: clamp(28px, 4.4vw, 42px);
+  line-height: 1.05;
+  letter-spacing: -.035em;
+  margin: 0 0 12px;
+  background: linear-gradient(120deg, var(--brand-navy), var(--brand-blue) 62%, #1d9fb8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.consulta-hero p { margin: 0; color: var(--soft); font-size: 14.5px; line-height: 1.62; }
+
+/* ---------- Buscador ---------- */
+.consulta-buscador {
+  display: flex; align-items: center; gap: 12px;
+  margin: 26px 0 24px;
+  padding: 6px 6px 6px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--borde-sutil);
+  background: rgba(255, 255, 255, .72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 12px 30px -22px rgba(16, 26, 99, .5), inset 0 1px 0 rgba(255, 255, 255, .8);
+  transition: border-color .25s var(--ease), box-shadow .25s var(--ease);
+}
+.consulta-buscador:focus-within {
+  border-color: rgba(0, 23, 232, .45);
+  box-shadow: 0 0 0 4px rgba(0, 23, 232, .1), 0 16px 34px -20px rgba(0, 23, 232, .5);
+}
+.consulta-buscador > svg { color: var(--muted); flex: none; transition: color .25s var(--ease); }
+.consulta-buscador:focus-within > svg { color: var(--brand-blue); }
+.consulta-buscador input {
+  flex: 1; min-width: 0;
+  border: 0; outline: 0; background: none;
+  font-size: 15px; color: var(--ink);
+  padding: 13px 0;
+}
+.consulta-buscador input::placeholder { color: var(--muted); }
+.consulta-limpiar {
+  flex: none; width: 40px; height: 40px; border-radius: 50%;
+  border: 0; background: rgba(0, 23, 232, .07); color: var(--soft);
+  display: grid; place-items: center;
+  transition: background .2s var(--ease), color .2s var(--ease);
+}
+.consulta-limpiar:hover { background: rgba(0, 23, 232, .14); color: var(--brand-blue); }
+
+/* ---------- Indicadores ---------- */
+.consulta-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 13px;
+}
+.consulta-stat {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid var(--borde-vidrio);
+  background: linear-gradient(150deg, rgba(255, 255, 255, .82), rgba(255, 255, 255, .5));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 12px 30px -24px rgba(16, 26, 99, .5), inset 0 1px 0 rgba(255, 255, 255, .85);
+  padding: 17px 18px;
+  transition: transform .26s var(--ease), box-shadow .26s var(--ease);
+}
+.consulta-stat:hover { transform: translateY(-3px); box-shadow: var(--sombra-alta); }
+/* Halo del color propio de cada indicador. */
+.consulta-stat::after {
+  content: "";
+  position: absolute; top: -46px; right: -46px;
+  width: 116px; height: 116px; border-radius: 50%;
+  background: var(--tint);
+  filter: blur(16px);
+  opacity: .8;
+}
+.consulta-stat > * { position: relative; z-index: 1; }
+.consulta-stat i {
+  display: grid; place-items: center;
+  width: 36px; height: 36px; border-radius: 12px;
+  background: var(--tint); color: var(--acc);
+  margin-bottom: 13px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .6);
+}
+.consulta-stat strong {
+  display: block;
+  font-family: 'Bricolage Grotesque';
+  font-size: 29px; line-height: 1;
+  letter-spacing: -.03em;
+  color: var(--ink);
+}
+.consulta-stat span {
+  display: block; margin-top: 6px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--muted);
+}
+
+/* ---------- Cabecera de sección ---------- */
+.consulta-titulo {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 18px; margin-bottom: 22px;
+}
+.consulta-titulo h2 {
+  font-family: 'Bricolage Grotesque'; font-weight: 800;
+  font-size: 30px; letter-spacing: -.03em; margin: 0;
+}
+.consulta-vista {
+  display: flex; gap: 4px; flex: none;
+  padding: 5px;
+  border-radius: 999px;
+  border: 1px solid var(--borde-vidrio);
+  background: rgba(255, 255, 255, .6);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8);
+}
+.consulta-vista button {
+  border: 0; background: none;
+  border-radius: 999px; padding: 9px 16px;
+  font-size: 12.5px; font-weight: 800; color: var(--soft);
+  display: flex; align-items: center; gap: 7px;
+  transition: background .22s var(--ease), color .22s var(--ease), box-shadow .22s var(--ease);
+}
+.consulta-vista button:not(.on):hover { color: var(--brand-blue); background: rgba(0, 23, 232, .07); }
+.consulta-vista button.on {
+  background: linear-gradient(120deg, var(--brand-navy), var(--brand-blue) 68%, var(--brand-cyan));
+  color: #fff;
+  box-shadow: 0 12px 26px -14px rgba(0, 23, 232, .7);
+}
+
+/* ---------- Grupos de procesos ---------- */
+.consulta-tier { margin-top: 30px; }
+.consulta-tier-head {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 15px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(160, 180, 235, .28);
+}
+.consulta-tier-head i {
+  width: 5px; height: 22px; border-radius: 4px;
+  background: var(--tier-color);
+  box-shadow: 0 0 14px -1px var(--tier-color);
+}
+.consulta-tier-head h3 {
+  flex: 1;
+  font-family: 'Bricolage Grotesque'; font-weight: 800;
+  font-size: 14px; margin: 0;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.consulta-tier-head span {
+  font-size: 11px; font-weight: 800; color: var(--muted);
+  background: rgba(255, 255, 255, .6);
+  border: 1px solid var(--borde-sutil);
+  border-radius: 999px; padding: 5px 11px;
+}
+
+.consulta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(252px, 1fr));
+  gap: 15px;
+}
+
+/* ---------- Tarjeta de proceso ---------- */
+.consulta-card {
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+  border-radius: 22px;
+  border: 1px solid var(--borde-vidrio);
+  background: linear-gradient(155deg, rgba(255, 255, 255, .8), rgba(255, 255, 255, .46));
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: 0 14px 34px -26px rgba(16, 26, 99, .5), inset 0 1px 0 rgba(255, 255, 255, .85);
+  padding: 20px;
+  cursor: pointer;
+  display: flex; flex-direction: column; gap: 14px;
+  transition: transform .28s var(--ease), box-shadow .28s var(--ease), border-color .28s var(--ease);
+}
+.consulta-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(255, 255, 255, .95);
+  box-shadow: var(--sombra-alta);
+}
+/* Veladura del color de la familia del proceso. */
+.consulta-card::before {
+  content: "";
+  position: absolute; top: -60px; left: -30px;
+  width: 170px; height: 170px; border-radius: 50%;
+  background: var(--tier-color);
+  opacity: .13;
+  filter: blur(26px);
+  transition: opacity .28s var(--ease);
+}
+.consulta-card:hover::before { opacity: .26; }
+.consulta-card > * { position: relative; z-index: 1; }
+
+.consulta-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.consulta-sigla {
+  font-family: 'JetBrains Mono'; font-weight: 800; font-size: 11px;
+  letter-spacing: .04em;
+  padding: 6px 11px; border-radius: 10px;
+  color: var(--tier-color);
+  background: color-mix(in srgb, var(--tier-color) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tier-color) 22%, transparent);
+}
+.consulta-card h4 {
+  font-family: 'Bricolage Grotesque'; font-weight: 800;
+  font-size: 16.5px; line-height: 1.22; margin: 0;
+  letter-spacing: -.015em;
+}
+.consulta-card-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid rgba(160, 180, 235, .26);
+}
+.consulta-docs { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.consulta-abrir {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12.5px; font-weight: 800; color: var(--brand-blue);
+  transition: gap .22s var(--ease);
+}
+.consulta-card:hover .consulta-abrir { gap: 9px; }
+
+/* ---------- Sin resultados ---------- */
+.consulta-vacio {
+  border: 1px dashed rgba(160, 180, 235, .55);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, .45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: 54px 24px;
+  text-align: center;
+  color: var(--muted);
+}
+.consulta-vacio i {
+  display: grid; place-items: center;
+  width: 60px; height: 60px; margin: 0 auto 16px;
+  border-radius: 20px;
+  background: rgba(0, 23, 232, .08);
+  color: var(--brand-blue);
+}
+.consulta-vacio h3 { font-family: 'Bricolage Grotesque'; font-size: 20px; color: var(--ink); margin: 0 0 6px; }
+.consulta-vacio p { margin: 0; font-size: 13.5px; }
+
+/* ---------- Barra superior y mapa, en la misma familia ---------- */
+.topbar {
+  background: rgba(255, 255, 255, .6) !important;
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border-bottom: 1px solid rgba(255, 255, 255, .7) !important;
+  box-shadow: 0 10px 30px -30px rgba(16, 26, 99, .5);
+}
+.map-canvas, .map-layer {
+  border-radius: 24px;
+  border: 1px solid var(--borde-vidrio, rgba(255, 255, 255, .75));
+  background: rgba(255, 255, 255, .58);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 16px 40px -30px rgba(16, 26, 99, .45);
+}
+
+/* ---------- Adaptación ---------- */
+@media (max-width: 1080px) {
+  .consulta-stats { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 900px) {
+  .consulta-hero { padding: 24px 20px 22px; border-radius: 24px; margin-bottom: 22px; }
+  .consulta-hero h2 { font-size: 26px; }
+  .consulta-hero p { font-size: 13.5px; }
+  .consulta-buscador { margin: 20px 0 18px; padding-left: 16px; }
+  .consulta-buscador input { font-size: 16px; padding: 12px 0; }
+  .consulta-titulo { flex-direction: column; align-items: stretch; gap: 13px; }
+  .consulta-titulo h2 { font-size: 24px; }
+  .consulta-vista button { flex: 1; justify-content: center; padding: 10px 12px; }
+  .consulta-grid { grid-template-columns: 1fr; }
+  /* En móvil el desenfoque se aligera: cuesta caro de dibujar y encima
+     Safari lo aplica de forma irregular al desplazar. */
+  .consulta-hero, .consulta-stat, .consulta-card, .consulta-buscador, .consulta-vista {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .consulta-luz i { filter: blur(70px); opacity: .42; }
+}
+@media (max-width: 560px) {
+  .consulta-stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .consulta-stat { padding: 14px; border-radius: 17px; }
+  .consulta-stat strong { font-size: 24px; }
+  .consulta-stat i { width: 31px; height: 31px; margin-bottom: 10px; }
+}

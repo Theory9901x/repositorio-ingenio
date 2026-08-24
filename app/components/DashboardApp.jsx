@@ -181,24 +181,103 @@ export default function DashboardApp() {
 
 function Consultation({ processes, docs, query, setQuery, view, setView, countFor, onOpen, mapFailed, setMapFailed }) {
   const stats = [
-    { label: "Procesos visibles", value: processes.length, Icon: Grid2X2, acc: "var(--brand-blue)", tint: "rgba(0,23,232,.1)" },
-    { label: "Documentos", value: docs.length, Icon: FileText, acc: "var(--brand-navy)", tint: "rgba(16,26,99,.1)" },
-    { label: "Vigentes", value: docs.filter((d) => d.state === "vigente").length, Icon: CheckCircle2, acc: "var(--green)", tint: "rgba(23,138,82,.12)" },
-    { label: "Con archivo", value: docs.filter((d) => d.hasFile).length, Icon: Paperclip, acc: "var(--brand-cyan)", tint: "rgba(34,215,223,.14)" },
+    { label: "Procesos visibles", value: processes.length, Icon: Grid2X2, acc: "var(--brand-blue)", tint: "rgba(0,23,232,.12)" },
+    { label: "Documentos", value: docs.length, Icon: FileText, acc: "var(--brand-navy)", tint: "rgba(16,26,99,.12)" },
+    { label: "Vigentes", value: docs.filter((d) => d.state === "vigente").length, Icon: CheckCircle2, acc: "var(--green)", tint: "rgba(23,138,82,.14)" },
+    { label: "Con archivo", value: docs.filter((d) => d.hasFile).length, Icon: Paperclip, acc: "#0f8f99", tint: "rgba(34,215,223,.2)" },
   ];
-  return <section className="section dashboard-section">
-    <div className="hero-panel"><div className="hero-copy"><div className="eyebrow">Sistema integrado de gestión</div><h2>La documentación de cada proceso, en un solo lugar.</h2><p>Busca por código, nombre, archivo, proceso, sigla o tipo documental; luego entra a la ficha completa del proceso.</p></div><div className="hero-search-card"><div className="searchbar hero-search"><Search size={19} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar en todo el repositorio…" /></div></div><div className="stats-grid">{stats.map((s) => <div className="stat-card" key={s.label} style={{ "--acc": s.acc, "--tint": s.tint }}><span className="stat-ico"><s.Icon size={16} /></span><strong>{s.value}</strong><span>{s.label}</span></div>)}</div></div>
-    <div className="section-title-row"><div><div className="eyebrow">Arquitectura de procesos</div><h2 className="h2">Mapa documental</h2></div><div className="view-toggle"><button className={view === "cards" ? "on" : ""} onClick={() => setView("cards")}><Grid2X2 size={16} /> Vista tarjetas</button><button className={view === "map" ? "on" : ""} onClick={() => setView("map")}><Map size={16} /> Vista mapa interactivo</button></div></div>
-    {view === "cards" ? <ProcessGroups processes={processes} countFor={countFor} onOpen={onOpen} /> : <InteractiveMap processes={processes} countFor={countFor} onOpen={onOpen} failed={mapFailed} setFailed={setMapFailed} />}
-    {!processes.length && <div className="empty-state"><span className="empty-ico"><FolderSearch size={24} /></span><h3>Sin coincidencias</h3><p>Prueba con otro código, nombre, proceso o tipo documental.</p></div>}
-  </section>;
+
+  return (
+    <section className="section dashboard-section consulta">
+      {/* Luz de fondo: es lo que las superficies de cristal dejan entrever. */}
+      <div className="consulta-luz" aria-hidden="true"><i /><i /><i /></div>
+
+      <div className="consulta-hero">
+        <div className="consulta-hero-txt">
+          <span className="consulta-eyebrow"><Sparkles size={12} /> Sistema integrado de gestión</span>
+          <h2>La documentación de cada proceso, en un solo lugar.</h2>
+          <p>Busca por código, nombre, archivo, proceso, sigla o tipo documental; luego entra a la ficha completa del proceso.</p>
+        </div>
+
+        <div className="consulta-buscador">
+          <Search size={19} />
+          <input value={query} onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar en todo el repositorio…" aria-label="Buscar en el repositorio" />
+          {query && <button className="consulta-limpiar" onClick={() => setQuery("")} aria-label="Limpiar búsqueda"><X size={15} /></button>}
+        </div>
+
+        <div className="consulta-stats">
+          {stats.map((s) => (
+            <article className="consulta-stat" key={s.label} style={{ "--acc": s.acc, "--tint": s.tint }}>
+              <i><s.Icon size={17} /></i>
+              <strong>{s.value}</strong>
+              <span>{s.label}</span>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className="consulta-titulo">
+        <div>
+          <span className="consulta-eyebrow"><Workflow size={12} /> Arquitectura de procesos</span>
+          <h2>Mapa documental</h2>
+        </div>
+        <div className="consulta-vista">
+          <button className={view === "cards" ? "on" : ""} onClick={() => setView("cards")}><Grid2X2 size={16} /> Tarjetas</button>
+          <button className={view === "map" ? "on" : ""} onClick={() => setView("map")}><Map size={16} /> Mapa</button>
+        </div>
+      </div>
+
+      {view === "cards"
+        ? <ProcessGroups processes={processes} countFor={countFor} onOpen={onOpen} />
+        : <InteractiveMap processes={processes} countFor={countFor} onOpen={onOpen} failed={mapFailed} setFailed={setMapFailed} />}
+
+      {!processes.length && (
+        <div className="consulta-vacio">
+          <i><FolderSearch size={26} /></i>
+          <h3>Sin coincidencias</h3>
+          <p>Prueba con otro código, nombre, proceso o tipo documental.</p>
+        </div>
+      )}
+    </section>
+  );
 }
 
 function ProcessGroups({ processes, countFor, onOpen }) {
-  return TIERS.map(([tier, label, color]) => { const items = processes.filter((p) => p.tier === tier); if (!items.length) return null; return <div className="tier" key={tier}><div className="tier-head"><i className="tier-bar" style={{ background: color }} /><h3>{label}</h3><span>{items.length} procesos</span></div><div className="grid">{items.map((process) => <ProcessCard key={process.id} process={process} color={color} count={countFor(process.id)} onOpen={onOpen} />)}</div></div>; });
+  return TIERS.map(([tier, label, color]) => {
+    const items = processes.filter((p) => p.tier === tier);
+    if (!items.length) return null;
+    return (
+      <div className="consulta-tier" key={tier} style={{ "--tier-color": color }}>
+        <div className="consulta-tier-head">
+          <i />
+          <h3>{label}</h3>
+          <span>{items.length} procesos</span>
+        </div>
+        <div className="consulta-grid">
+          {items.map((process) => (
+            <ProcessCard key={process.id} process={process} color={color} count={countFor(process.id)} onOpen={onOpen} />
+          ))}
+        </div>
+      </div>
+    );
+  });
 }
 
-function ProcessCard({ process, color, count, onOpen }) { return <button className="pcard" onClick={() => onOpen(process)}><i className="edge" style={{ background: color }} /><span className="sig" style={{ color, background: `${color}17` }}>{process.sigla}</span><h4>{process.name}</h4><span className="meta"><span className="count">{count} documentos</span><span className="go">Abrir proceso <ArrowRight size={14} /></span></span></button>; }
+function ProcessCard({ process, color, count, onOpen }) {
+  return (
+    <button className="consulta-card" style={{ "--tier-color": color }} onClick={() => onOpen(process)}>
+      <div className="consulta-card-top">
+        <span className="consulta-sigla">{process.sigla}</span>
+      </div>
+      <h4>{process.name}</h4>
+      <div className="consulta-card-foot">
+        <span className="consulta-docs"><FileText size={13} /> {count} documentos</span>
+        <span className="consulta-abrir">Abrir <ArrowRight size={14} /></span>
+      </div>
+    </button>
+  );
+}
 
 function InteractiveMap({ processes, countFor, onOpen, failed, setFailed }) {
   return <div className="process-map"><div className="map-canvas">{!failed && <img src="/branding/mapa-procesos-grupo-ingenio.jpg" alt="Mapa de procesos de Grupo Ingenio" onError={() => setFailed(true)} />}{failed && <div className="map-fallback"><Map size={36} /><strong>Mapa navegable por categorías</strong><span>La imagen institucional aún no está disponible; todos los procesos siguen accesibles.</span></div>}</div><div className="map-layers">{TIERS.map(([tier, label, color]) => { const items = processes.filter((p) => p.tier === tier); if (!items.length) return null; return <div className="map-layer" key={tier} style={{ "--layer": color }}><h3>{label}</h3><div>{items.map((process) => <button key={process.id} onClick={() => onOpen(process)}><b>{process.sigla}</b><span>{process.name}</span><em>{countFor(process.id)}</em></button>)}</div></div>; })}</div></div>;
