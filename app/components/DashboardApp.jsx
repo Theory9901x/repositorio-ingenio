@@ -30,6 +30,8 @@ const TIERS = [
 ];
 const SECTION_TITLES = { pendientes: "Mis pendientes", consultation: "Consulta documental", advancedSearch:"Búsqueda avanzada", executive:"Tablero Gerencial", workspace: "Mi espacio / Plan", contracts: "Contratos / Rutas", internalDocs: "Documentación Interna", community:"Comunidad", profile:"Mi perfil", admin: "Administración" };
 const initialAuth = { full_name: "", cedula: "", email: "", password: "", cargo: "" };
+// Módulos con ruta propia: se abren con navegación de cliente.
+const RUTAS_MODULO = { workspace: "/workspace", contracts: "/gestion-contractual", community: "/comunidad", usuarios: "/usuarios" };
 
 async function readJson(response) {
   const data = await response.json().catch(() => null);
@@ -90,6 +92,13 @@ export default function DashboardApp() {
   useEffect(() => { loadUser().catch(() => setUser(null)); }, [loadUser]);
   useEffect(() => { if (user) loadAll(); }, [user, loadAll]);
   useEffect(() => { if (!user?.isAdmin && ["admin", "internalDocs", "executive"].includes(section)) setSection("consultation"); }, [user, section]);
+  // Con sesión iniciada se adelantan los bundles de los módulos para que el
+  // primer clic no espere nada.
+  useEffect(() => {
+    if (!user) return;
+    const t = setTimeout(() => { Object.values(RUTAS_MODULO).forEach((r) => router.prefetch(r)); }, 800);
+    return () => clearTimeout(t);
+  }, [user, router]);
   useEffect(() => {
     if (!selectedProcess) return;
     const fresh = processes.find((p) => Number(p.id) === Number(selectedProcess.id));
@@ -117,18 +126,11 @@ export default function DashboardApp() {
 
   // Los módulos con ruta propia se abren con navegación de cliente: el
   // documento no se recarga y el cambio es inmediato.
-  const RUTAS_MODULO = { workspace: "/workspace", contracts: "/gestion-contractual", community: "/comunidad", usuarios: "/usuarios" };
   function navigate(next) {
     const ruta = RUTAS_MODULO[next];
     if (ruta) { router.push(ruta); return; }
     setSection(next); setSelectedProcess(null); setDetail(null);
   }
-  // Y se adelantan sus bundles para que el primer clic no espere nada.
-  useEffect(() => {
-    if (!user) return;
-    const t = setTimeout(() => { Object.values(RUTAS_MODULO).forEach((r) => router.prefetch(r)); }, 800);
-    return () => clearTimeout(t);
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
   async function logout() { await fetch("/api/auth/logout", { method: "POST" }); setUser(null); setDocs([]); }
 
   const navItems = [
