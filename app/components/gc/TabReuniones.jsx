@@ -22,7 +22,8 @@ export default function TabReuniones({ contratoId, detalle, avisar, setVisor }) 
   const [confirmar, setConfirmar] = useState(null);
   const [guardando, setGuardando] = useState(false);
 
-  const url = `/api/gc/contracts/${contratoId}/meetings`;
+  // Solo las del contrato: las mesas de trabajo viven en su propia pestaña.
+  const url = `/api/gc/contracts/${contratoId}/meetings?tipo=general`;
   const { datos: reuniones, refrescar } = useDatos(url, { onError: (e) => avisar(e.message, "error") });
 
   const cargar = useCallback(() => { invalidar(url); return refrescar(); }, [url, refrescar]);
@@ -33,7 +34,7 @@ export default function TabReuniones({ contratoId, detalle, avisar, setVisor }) 
   async function crearReunion() {
     setGuardando(true);
     try {
-      await enviarJson(url, "POST", drawerAlta);
+      await enviarJson(`/api/gc/contracts/${contratoId}/meetings`, "POST", drawerAlta);
       avisar("Reunión creada");
       setDrawerAlta(null);
       cargar();
@@ -48,7 +49,7 @@ export default function TabReuniones({ contratoId, detalle, avisar, setVisor }) 
       fd.set("meetingId", reunion.id);
       fd.set("kind", kind);
       fd.set("file", archivo);
-      await enviarForm(url, "PUT", fd);
+      await enviarForm(`/api/gc/contracts/${contratoId}/meetings`, "PUT", fd);
       avisar(kind === "acta" ? "Acta anexada" : kind === "asistencia" ? "Asistencia anexada" : "Anexo agregado");
       cargar();
     } catch (e) { avisar(e.message, "error"); } finally { setSubiendo(null); }
@@ -59,7 +60,7 @@ export default function TabReuniones({ contratoId, detalle, avisar, setVisor }) 
     setConfirmar(null);
     try {
       const query = c.tipo === "archivo" ? `fileId=${c.id}` : `meetingId=${c.id}`;
-      await api(`${url}?${query}`, { method: "DELETE" });
+      await api(`/api/gc/contracts/${contratoId}/meetings?${query}`, { method: "DELETE" });
       avisar(c.tipo === "archivo" ? "Archivo retirado" : "Reunión eliminada");
       cargar();
     } catch (e) { avisar(e.message, "error"); }

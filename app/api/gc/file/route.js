@@ -13,6 +13,7 @@ const ORIGENES = {
   informe: { tabla: "contract_monthly_reports", propietario: "user_id" },
   entrega: { tabla: "contract_document_submissions", propietario: "user_id" },
   reunion: { tabla: "contract_meeting_files", propietario: "uploaded_by" },
+  cronograma: { tabla: "contract_workplans", propietario: "user_id" },
 };
 
 export async function GET(req) {

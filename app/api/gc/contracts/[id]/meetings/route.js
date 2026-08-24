@@ -3,7 +3,7 @@ import { guardarArchivo, borrarArchivo, FileError } from "@/lib/gc/files";
 
 export const dynamic = "force-dynamic";
 
-const TIPOS_ANEXO = new Set(["acta", "asistencia", "anexo"]);
+const TIPOS_ANEXO = new Set(["acta", "asistencia", "foto", "anexo"]);
 
 // Reuniones del contrato: cada una es una carpeta fechada con su acta,
 // su lista de asistencia y los demás soportes.
@@ -12,16 +12,31 @@ export async function GET(_req, { params }) {
   if (ctx.error) return ctx.error;
   const { pool, contractId } = ctx;
 
+  // Las generales son del contrato; las mesas de trabajo, de cada persona.
+  const q = new URL(_req.url).searchParams;
+  const tipo = q.get("tipo") === "mesa" ? "mesa" : q.get("tipo") === "general" ? "general" : null;
+  const pedido = Number(q.get("userId")) || null;
+
+  const args = [contractId];
+  let filtro = "";
+  if (tipo === "general") filtro += " AND (m.kind IS NULL OR m.kind='general')";
+  if (tipo === "mesa") filtro += " AND m.kind='mesa'";
+  // El trabajador ve las generales y solo sus propias mesas.
+  if (ctx.rol === ROL.TRABAJADOR) { filtro += " AND (m.user_id IS NULL OR m.user_id=?)"; args.push(ctx.me.id); }
+  else if (pedido) { filtro += " AND m.user_id=?"; args.push(pedido); }
+
   const [reuniones] = await pool.query(
-    `SELECT m.id, m.title, m.description, m.location,
+    `SELECT m.id, m.title, m.description, m.location, m.user_id,
+            COALESCE(m.kind,'general') AS kind,
             DATE_FORMAT(m.meeting_date,'%Y-%m-%d') meeting_date,
             DATE_FORMAT(m.created_at,'%Y-%m-%d %H:%i') created_at,
-            u.full_name AS created_by_name
+            u.full_name AS created_by_name, p.full_name AS persona_name
        FROM contract_meetings m
        LEFT JOIN users u ON u.id=m.created_by
-      WHERE m.contract_id=?
+       LEFT JOIN users p ON p.id=m.user_id
+      WHERE m.contract_id=?${filtro}
       ORDER BY m.meeting_date DESC, m.id DESC`,
-    [contractId]
+    args
   );
 
   // Los archivos de todas las reuniones, en una sola consulta.
@@ -54,12 +69,26 @@ export async function POST(req, { params }) {
   if (!title) return Response.json({ error: "Indica el asunto de la reunión" }, { status: 400 });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return Response.json({ error: "Indica la fecha de la reunión" }, { status: 400 });
 
+  // Una mesa de trabajo pertenece a una persona; una reunión general, al
+  // contrato. El trabajador solo puede crear mesas suyas.
+  const esMesa = b.kind === "mesa";
+  let userId = null;
+  if (esMesa) {
+    userId = ctx.rol === ROL.TRABAJADOR ? me.id : Number(b.user_id) || me.id;
+    const [[participa]] = await pool.query(
+      "SELECT 1 AS ok FROM contract_users WHERE contract_id=? AND user_id=?", [contractId, userId]
+    );
+    if (!participa) return Response.json({ error: "La persona no participa en este contrato" }, { status: 400 });
+  }
+
   const [r] = await pool.query(
-    "INSERT INTO contract_meetings (contract_id, meeting_date, title, description, location, created_by) VALUES (?,?,?,?,?,?)",
+    "INSERT INTO contract_meetings (contract_id, meeting_date, title, description, location, created_by, user_id, kind) VALUES (?,?,?,?,?,?,?,?)",
     [contractId, fecha, title, (b.description || "").toString().trim() || null,
-     (b.location || "").toString().trim() || null, me.id]
+     (b.location || "").toString().trim() || null, me.id, userId, esMesa ? "mesa" : "general"]
   );
-  await auditar(pool, { me, contractId, entidad: "meeting", entidadId: r.insertId, accion: "MEETING_CREATED", descripcion: `Reunión creada: ${title} (${fecha})`, req });
+  await auditar(pool, { me, contractId, entidad: "meeting", entidadId: r.insertId,
+    accion: esMesa ? "WORKTABLE_CREATED" : "MEETING_CREATED",
+    descripcion: `${esMesa ? "Mesa de trabajo" : "Reunión"} creada: ${title} (${fecha})`, req });
   return Response.json({ ok: true, id: r.insertId });
 }
 
@@ -83,7 +112,8 @@ export async function PUT(req, { params }) {
     const guardado = await guardarArchivo(fd.get("file"), `reuniones/${contractId}`, me.id);
 
     // Acta y asistencia son únicas por reunión: la nueva reemplaza la anterior.
-    if (kind !== "anexo") {
+    // Las fotos y los anexos se acumulan.
+    if (kind === "acta" || kind === "asistencia") {
       const [previas] = await pool.query(
         "SELECT id, file_path FROM contract_meeting_files WHERE meeting_id=? AND kind=?", [meetingId, kind]
       );

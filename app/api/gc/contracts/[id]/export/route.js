@@ -254,6 +254,8 @@ export async function GET(req, { params }) {
     let sql = "";
     if (desde) { sql += " AND m.meeting_date >= ?"; args.push(desde); }
     if (hasta) { sql += " AND m.meeting_date <= ?"; args.push(hasta); }
+    // Filtrando por persona se exportan sus mesas de trabajo.
+    if (userId) { sql += " AND m.user_id=?"; args.push(userId); }
     const [reuniones] = await pool.query(
       `SELECT m.id, m.title, m.description, m.location, DATE_FORMAT(m.meeting_date,'%Y-%m-%d') meeting_date,
               u.full_name AS created_by_name
