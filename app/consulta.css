@@ -22,10 +22,10 @@
 /* ---------- Luz de fondo ---------- */
 /* Los orbes viven detrás de todo y son lo que las tarjetas dejan entrever. */
 .consulta-luz {
-  position: fixed;
+  position: fixed !important;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
+  z-index: 0 !important;
   overflow: hidden;
 }
 .consulta-luz i {
@@ -47,7 +47,7 @@
   width: 560px; height: 560px; bottom: -240px; left: 28%;
   background: radial-gradient(circle, rgba(123, 92, 250, .5), rgba(123, 92, 250, .16) 46%, transparent 70%);
 }
-.consulta > * { position: relative; z-index: 1; }
+.consulta > *:not(.consulta-luz) { position: relative; z-index: 1; }
 
 /* El contenedor de la vista no debe tapar la luz del fondo. */
 .main:has(.consulta), .main:has(.consulta) .dashboard-wrap { background: transparent; }
