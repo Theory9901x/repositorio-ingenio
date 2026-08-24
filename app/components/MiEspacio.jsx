@@ -178,17 +178,40 @@ export default function MiEspacio({ user }) {
     const next = starred.includes(id) ? starred.filter((x) => x !== id) : [...starred, id];
     setStarred(next); saveLS("me-starred", next);
   }
+  function fileUrl(f, download) {
+    if (f.source === "repo_reference") return `/api/documents/${f.repo_document_id}/file`;
+    return `/api/workspace/files/${f.id}/file${download ? "?download=1" : ""}`;
+  }
   function openFile(f) {
-    if (f.source === "repo_reference") {
-      window.open(`/api/documents/${f.repo_document_id}/file`, "_blank");
-      return;
-    }
+    const isRef = f.source === "repo_reference";
     setViewer({
-      title: f.title, fileName: f.file_name, mime: f.mime_type, size: f.size_bytes,
-      date: fmtDate(f.created_at), sourceLabel: "Mi espacio",
+      title: f.title || f.file_name,
+      fileName: f.file_name || f.repo_name || f.title,
+      mime: f.mime_type,
+      size: f.size_bytes,
+      date: fmtDate(f.created_at),
+      sourceLabel: isRef ? `Repositorio institucional · ${f.repo_code || ""}`.trim() : "Mi espacio",
       location: crumbs.length ? crumbs.map((c) => c.name).join(" / ") : "Mis carpetas",
-      url: `/api/workspace/files/${f.id}/file`,
+      url: fileUrl(f),
+      downloadUrl: fileUrl(f, true),
     });
+  }
+  function download(f) {
+    const a = document.createElement("a");
+    a.href = fileUrl(f, true);
+    a.download = f.file_name || f.title || "archivo";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  function downloadAll() {
+    const params = selFolder ? `?scope=folder&folderId=${selFolder}` : view === "espacio" ? "?scope=folder" : "";
+    const a = document.createElement("a");
+    a.href = `/api/workspace/download-all${params}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    notify("Preparando descarga…");
   }
 
   /* ---------- derivados ---------- */
@@ -257,7 +280,8 @@ export default function MiEspacio({ user }) {
     const Icon = KIND_ICON[kind];
     const isStar = starred.includes(f.id);
     return (
-      <div className="me-frow" key={f.id}>
+      <div className="me-frow" key={f.id} onClick={() => openFile(f)} role="button" tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openFile(f); } }}>
         <div className="me-fname">
           <span className={`me-ficon ${kind}`}><Icon size={17} /></span>
           <div style={{ minWidth: 0 }}>
@@ -268,15 +292,15 @@ export default function MiEspacio({ user }) {
         <span className="me-ftype">{extOf(f)}</span>
         <span className="me-fsize">{fmtSize(f.size_bytes)}</span>
         <span className="me-fdate">{fmtDate(f.created_at)}</span>
-        <div className="me-fact">
+        <div className="me-fact" onClick={(e) => e.stopPropagation()}>
+          <button className="me-iconact" title="Ver documento" onClick={() => openFile(f)}><Eye size={15} /></button>
+          <button className="me-iconact" title="Descargar" onClick={() => download(f)}><Download size={15} /></button>
           <button className={`me-star ${isStar ? "on" : ""}`} title="Favorito" onClick={() => toggleStar(f.id)}><Star size={15} /></button>
           <button className="me-dots" onClick={(e) => { e.stopPropagation(); setMenuId(menuId === f.id ? null : f.id); }}><MoreHorizontal size={16} /></button>
           {menuId === f.id && (
             <div className="me-menu" onClick={(e) => e.stopPropagation()}>
               <button onClick={() => { setMenuId(null); openFile(f); }}><Eye size={14} /> Ver documento</button>
-              {f.source !== "repo_reference" && (
-                <a href={`/api/workspace/files/${f.id}/file`} target="_blank" rel="noreferrer" onClick={() => setMenuId(null)}><Download size={14} /> Descargar</a>
-              )}
+              <button onClick={() => { setMenuId(null); download(f); }}><Download size={14} /> Descargar</button>
               <button onClick={() => toggleStar(f.id)}><Star size={14} /> {isStar ? "Quitar favorito" : "Marcar favorito"}</button>
               <button className="danger" onClick={() => { setMenuId(null); setModal({ type: "del-file", file: f }); }}><Trash2 size={14} /> Eliminar</button>
             </div>
@@ -290,19 +314,19 @@ export default function MiEspacio({ user }) {
     const kind = kindOf(f);
     const Icon = KIND_ICON[kind];
     return (
-      <div className="me-filecard" key={f.id}>
+      <div className="me-filecard" key={f.id} onClick={() => openFile(f)} role="button" tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openFile(f); } }}>
         <span className={`me-ficon ${kind}`} style={{ width: 42, height: 42 }}><Icon size={19} /></span>
         <b>{f.title || f.file_name}</b>
         <small>{extOf(f)} · {fmtSize(f.size_bytes)} · {fmtDate(f.created_at)}</small>
-        <div className="me-fact">
+        <div className="me-fact" onClick={(e) => e.stopPropagation()}>
+          <button className="me-iconact" title="Descargar" onClick={() => download(f)}><Download size={14} /></button>
           <button className={`me-star ${starred.includes(f.id) ? "on" : ""}`} onClick={() => toggleStar(f.id)}><Star size={14} /></button>
           <button className="me-dots" onClick={(e) => { e.stopPropagation(); setMenuId(menuId === f.id ? null : f.id); }}><MoreHorizontal size={15} /></button>
           {menuId === f.id && (
             <div className="me-menu" onClick={(e) => e.stopPropagation()}>
               <button onClick={() => { setMenuId(null); openFile(f); }}><Eye size={14} /> Ver documento</button>
-              {f.source !== "repo_reference" && (
-                <a href={`/api/workspace/files/${f.id}/file`} target="_blank" rel="noreferrer" onClick={() => setMenuId(null)}><Download size={14} /> Descargar</a>
-              )}
+              <button onClick={() => { setMenuId(null); download(f); }}><Download size={14} /> Descargar</button>
               <button className="danger" onClick={() => { setMenuId(null); setModal({ type: "del-file", file: f }); }}><Trash2 size={14} /> Eliminar</button>
             </div>
           )}
@@ -331,6 +355,10 @@ export default function MiEspacio({ user }) {
             <button className="me-chip" onClick={() => { setModal({ type: "folder-new", parentId: selFolder }); setModalText(""); }}><FolderPlus size={14} /> Nueva carpeta</button>
             <button className="me-chip" onClick={() => fileInput.current?.click()} disabled={uploading}>
               <Upload size={14} /> {uploading ? "Subiendo…" : "Subir archivo"}
+            </button>
+            <button className="me-chip" onClick={downloadAll} disabled={!files.length}
+              title={selFolder ? "Descargar esta carpeta (y subcarpetas) en ZIP" : view === "espacio" ? "Descargar los archivos de esta vista en ZIP" : "Descargar todos tus archivos en ZIP"}>
+              <Download size={14} /> Descargar todo
             </button>
             <div className="me-viewtoggle">
               <button className={mode === "grid" ? "on" : ""} onClick={() => { setMode("grid"); setPref({ mode: "grid" }); }}><Grid2X2 size={14} /></button>
@@ -410,7 +438,7 @@ export default function MiEspacio({ user }) {
           <span className="me-avatar">{initials}</span>
           <div className="me-side-user-meta">
             <strong>{user?.full_name}</strong>
-            <span>{user?.role === "admin" ? "Administrador" : "Colaborador"}</span>
+            <span>{user?.cargo || (user?.isAdmin ? "Administrador" : "Colaborador")}</span>
             <em>En línea</em>
           </div>
         </div>

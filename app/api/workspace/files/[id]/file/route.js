@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "/var/lib/repositorio/uploads";
 
-export async function GET(_req, { params }) {
+export async function GET(req, { params }) {
   const me = await getCurrentUser();
   if (!me) return Response.json({ error: "No autorizado" }, { status: 401 });
   const id = Number(params.id);
@@ -17,11 +17,23 @@ export async function GET(_req, { params }) {
     [id, me.id]
   );
   if (!file?.file_path) return Response.json({ error: "Archivo no encontrado" }, { status: 404 });
-  const buf = await fs.readFile(path.join(UPLOAD_DIR, file.file_path));
+
+  let buf;
+  try {
+    buf = await fs.readFile(path.join(UPLOAD_DIR, file.file_path));
+  } catch {
+    return Response.json({ error: "Archivo no encontrado en disco" }, { status: 404 });
+  }
+
+  const name = file.file_name || "archivo";
+  const asAttachment = new URL(req.url).searchParams.get("download") === "1";
+  const ascii = name.replace(/[^\x20-\x7e]/g, "_").replace(/"/g, "'");
+
   return new Response(buf, {
     headers: {
       "Content-Type": file.mime_type || "application/octet-stream",
-      "Content-Disposition": `inline; filename="${encodeURIComponent(file.file_name || "archivo")}"`,
+      "Content-Length": String(buf.length),
+      "Content-Disposition": `${asAttachment ? "attachment" : "inline"}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`,
     },
   });
 }
