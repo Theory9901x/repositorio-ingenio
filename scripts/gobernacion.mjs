@@ -61,6 +61,16 @@ if (SOLO_CLAVES) {
   process.exit(0);
 }
 
+// Modo «terra»: desactiva la cuenta de Terra y la retira de los contratos.
+if (process.argv.includes("terra")) {
+  const [fuera] = await db.query("UPDATE users SET is_active=0 WHERE username='terra.vega'");
+  await db.query("DELETE cu FROM contract_users cu JOIN users u ON u.id=cu.user_id WHERE u.is_active=0");
+  await db.query("DELETE cm FROM contract_members cm JOIN users u ON u.id=cm.user_id WHERE u.is_active=0");
+  console.log(fuera.affectedRows ? "Terra desactivada y retirada de los contratos." : "Terra ya estaba desactivada.");
+  await db.end();
+  process.exit(0);
+}
+
 const terra = (t) => /terra/i.test(String(t || ""));
 console.log("\nCOINCIDENCIAS CON «TERRA»");
 console.log(" usuarios:", usuarios.filter((x) => terra(x.full_name) || terra(x.username) || terra(x.email)).map((x) => `#${x.id} ${x.full_name}`).join(", ") || "ninguna");
