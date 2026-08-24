@@ -197,5 +197,75 @@ for (const [nombre, categoria, estadoEv] of REQUISITOS) {
   }
 }
 
+// --- Reuniones: dos completas con acta, asistencia y anexos -----------------
+await db.query(`CREATE TABLE IF NOT EXISTS contract_meetings (
+  id INT AUTO_INCREMENT PRIMARY KEY, contract_id INT NOT NULL, meeting_date DATE NOT NULL,
+  title VARCHAR(220) NOT NULL, description TEXT NULL, location VARCHAR(160) NULL,
+  created_by INT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_reunion_contrato (contract_id), INDEX idx_reunion_fecha (meeting_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+await db.query(`CREATE TABLE IF NOT EXISTS contract_meeting_files (
+  id INT AUTO_INCREMENT PRIMARY KEY, meeting_id INT NOT NULL, contract_id INT NOT NULL,
+  kind VARCHAR(20) NOT NULL DEFAULT 'anexo', file_name VARCHAR(255) NOT NULL, file_path VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(160) NULL, size_bytes BIGINT NULL, uploaded_by INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_reunion_arch (meeting_id), INDEX idx_reunion_arch_contrato (contract_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+
+const REUNIONES = [
+  {
+    title: "Comité de seguimiento N.º 1 — arranque del contrato",
+    fecha: `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-05`,
+    location: "Sala de juntas · Alcaldía de Yopal",
+    description: "Instalación del comité, presentación del equipo, aprobación del cronograma de trabajo y definición del esquema de reportes mensuales.",
+    asistentes: ["Mateo Robayo Moreno (supervisión)", "Natalia Forero Bejarano (apoyo a la gestión)", "Delegada de la Alcaldía de Yopal"],
+    compromisos: ["Radicar el cronograma ajustado", "Habilitar el repositorio de evidencias", "Programar la visita de campo"],
+    anexos: ["Presentacion de arranque", "Cronograma aprobado en comite"],
+  },
+  {
+    title: "Comité de seguimiento N.º 2 — avance mensual",
+    fecha: `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-19`,
+    location: "Virtual · Google Meet",
+    description: "Revisión del avance del periodo, verificación de entregables radicados, estado de las evidencias y acuerdos para el siguiente corte.",
+    asistentes: ["Mateo Robayo Moreno (supervisión)", "Natalia Forero Bejarano (apoyo a la gestión)"],
+    compromisos: ["Subsanar la evidencia fotográfica pendiente", "Presentar el informe parcial antes del corte"],
+    anexos: ["Registro fotografico del comite"],
+  },
+];
+for (const r of REUNIONES) {
+  let [[reunion]] = await db.query("SELECT id FROM contract_meetings WHERE contract_id=? AND title=?", [C, r.title]);
+  if (!reunion) {
+    const [ins] = await db.query(
+      "INSERT INTO contract_meetings (contract_id, meeting_date, title, description, location, created_by) VALUES (?,?,?,?,?,?)",
+      [C, r.fecha, r.title, r.description, r.location, A]);
+    reunion = { id: ins.insertId };
+    console.log("Reunión:", r.title);
+  }
+  const archivos = [
+    ["acta", `Acta - ${r.title}.pdf`, "ACTA DE REUNION", [
+      `Fecha: ${r.fecha}   Lugar: ${r.location}`, "",
+      "TEMAS TRATADOS:", r.description, "",
+      "COMPROMISOS:", ...r.compromisos.map((c, i) => `${i + 1}. ${c}`),
+    ]],
+    ["asistencia", `Asistencia - ${r.title}.pdf`, "LISTA DE ASISTENCIA", [
+      `Fecha: ${r.fecha}   Lugar: ${r.location}`, "",
+      ...r.asistentes.map((x, i) => `${i + 1}. ${x} ................ (firma)`),
+    ]],
+    ...r.anexos.map((nombre) => ["anexo", `${nombre}.pdf`, nombre.toUpperCase(), [
+      `Soporte de la reunión: ${r.title}`, `Fecha: ${r.fecha}`, "Contrato DEMO - Alcaldia de Yopal",
+    ]]),
+  ];
+  for (const [kind, nombre, titulo, lineas] of archivos) {
+    const [[ya]] = await db.query(
+      "SELECT id FROM contract_meeting_files WHERE meeting_id=? AND kind=? AND file_name=?", [reunion.id, kind, nombre]);
+    if (ya) continue;
+    const g = await guardarPdf(`reuniones/${C}`, nombre, titulo, lineas, kind === "acta" ? A : P);
+    await db.query(
+      "INSERT INTO contract_meeting_files (meeting_id, contract_id, kind, file_name, file_path, mime_type, size_bytes, uploaded_by) VALUES (?,?,?,?,?,?,?,?)",
+      [reunion.id, C, kind, g.file_name, g.file_path, g.mime_type, g.size_bytes, kind === "acta" ? A : P]);
+    console.log(`  ${kind}: ${nombre}`);
+  }
+}
+
 console.log("\nDemo lista en el contrato #" + C + " a nombre de " + persona.full_name);
 await db.end();
