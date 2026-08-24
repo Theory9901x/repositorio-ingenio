@@ -206,6 +206,53 @@
 .gc-fico.zip{background:linear-gradient(135deg,#b18cff,#7c4ef0)}
 .gc-fico.otro{background:linear-gradient(135deg,#9aa6c9,#6b7898)}
 
+/* Árbol de carpetas de documentos */
+.gc-tree{display:flex;flex-direction:column;gap:2px}
+.gc-addfolder{width:30px;height:30px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--gc-line);background:rgba(255,255,255,.85);color:var(--gc-violet);
+  transition:transform .2s var(--gc-ease),background .2s var(--gc-ease)}
+.gc-addfolder:hover{transform:rotate(90deg);background:rgba(123,92,250,.12)}
+.gc-tree-row{position:relative;display:flex;align-items:center;gap:7px;border-radius:11px;padding:8px 9px;
+  font-size:13px;font-weight:700;color:var(--gc-soft);cursor:pointer;
+  transition:background .18s var(--gc-ease),color .18s var(--gc-ease)}
+.gc-tree-row:hover{background:rgba(123,92,250,.07);color:var(--gc-ink)}
+.gc-tree-row.on{background:linear-gradient(95deg,rgba(74,103,255,.14),rgba(123,92,250,.1));color:var(--gc-violet)}
+.gc-tree-row>svg{flex-shrink:0;color:var(--gc-blue)}
+.gc-tree-row.on>svg{color:var(--gc-violet)}
+.gc-tree-caret{border:0;background:none;padding:0;width:15px;flex-shrink:0;display:flex;color:var(--gc-muted)}
+.gc-tree-caret i{width:13px}
+/* El nombre ocupa el espacio libre: es la zona de clic de la fila y evita
+   que los botones de acción queden bajo el cursor al pulsar en el centro. */
+.gc-tree-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gc-tree-count{flex-shrink:0;font-size:10.5px;font-weight:800;background:rgba(123,92,250,.1);color:var(--gc-violet);
+  border-radius:999px;padding:2px 8px}
+.gc-tree-act{display:none;gap:2px;flex-shrink:0;margin-left:4px}
+.gc-tree-row:hover .gc-tree-act{display:flex}
+.gc-tree-row:hover .gc-tree-count{display:none}
+.gc-tree-act button{border:0;background:none;color:var(--gc-muted);padding:3px;display:flex;border-radius:6px}
+.gc-tree-act button:hover{color:var(--gc-violet);background:rgba(123,92,250,.14)}
+.gc-tree-foot{margin-top:12px;padding-top:11px;border-top:1px solid var(--gc-line);font-size:11.5px;
+  font-weight:700;color:var(--gc-muted);display:flex;align-items:center;gap:7px}
+
+/* Explorador de documentos */
+.gc-explorer-head{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--gc-line);flex-wrap:wrap}
+.gc-explorer-actions{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gc-explorer-sub{padding:13px 18px 6px;margin:0;font-size:10.5px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--gc-muted)}
+.gc-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--gc-line);border-radius:11px;
+  background:rgba(255,255,255,.85);color:var(--gc-soft);font-size:12.5px;font-weight:800;padding:9px 13px;
+  white-space:nowrap;transition:color .2s var(--gc-ease),border-color .2s var(--gc-ease),transform .2s var(--gc-ease)}
+.gc-chip:hover{color:var(--gc-violet);border-color:var(--gc-line2);transform:translateY(-1px)}
+.gc-foldergrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:12px}
+.gc-foldercard{text-align:left;background:rgba(255,255,255,.78);border:1px solid var(--gc-line);border-radius:16px;
+  padding:14px;display:flex;flex-direction:column;gap:8px;
+  transition:transform .22s var(--gc-ease),box-shadow .22s var(--gc-ease),border-color .22s var(--gc-ease)}
+.gc-foldercard:hover{transform:translateY(-2px);border-color:var(--gc-line2);box-shadow:var(--gc-shadow-soft)}
+.gc-foldercard .ico{width:38px;height:38px;border-radius:13px;display:flex;align-items:center;justify-content:center;
+  color:var(--gc-blue);background:rgba(74,103,255,.12)}
+.gc-foldercard b{font-size:13.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gc-foldercard span{font-size:11px;color:var(--gc-muted);font-weight:700}
+
 /* Progreso */
 .gc-bar{height:7px;border-radius:99px;background:rgba(123,92,250,.13);overflow:hidden;min-width:60px}
 .gc-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gc-blue),var(--gc-cyan));
