@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Check, Download, Eye, Inbox, Plus, Trash2, Upload, X } from "lucide-react";
 import { api, enviarForm, enviarJson, urlArchivo } from "./api";
 import { invalidar, useDatos } from "./cache";
-import { Cargando, Confirmar, Drawer, Estado, IconoArchivo, Vacio, fmtFecha, fmtFechaHora, fmtTam } from "./ui";
+import { BotonExportar, Cargando, Confirmar, Drawer, Estado, IconoArchivo, Vacio, fmtFecha, fmtFechaHora, fmtTam } from "./ui";
 
 const COLUMNAS = "minmax(0,1fr) 150px 120px 130px 120px";
 
@@ -77,7 +77,10 @@ export default function TabSolicitudes({ contratoId, detalle, avisar, setVisor }
       <section className="gc-card flush">
         <header className="gc-card-title" style={{ padding: "16px 18px 0", margin: 0 }}>
           <h3>{esTrabajador ? "Documentos que me solicitaron" : "Solicitudes de documentos"}</h3>
-          {puedeCrear && <button className="gc-btn primary" onClick={abrirNueva}><Plus size={15} /> Nueva solicitud</button>}
+          <div className="gc-actions">
+            <BotonExportar contratoId={contratoId} seccion="solicitudes" />
+            {puedeCrear && <button className="gc-btn primary" onClick={abrirNueva}><Plus size={15} /> Nueva solicitud</button>}
+          </div>
         </header>
 
         {datos.solicitudes.length ? (

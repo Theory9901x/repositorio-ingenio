@@ -2,11 +2,26 @@
 
 import { useEffect, useState } from "react";
 import {
-  AlertCircle, Check, Download, FileArchive, FileImage, FileSpreadsheet, FileText,
+  AlertCircle, Check, Download, FileArchive, FileDown, FileImage, FileSpreadsheet, FileText,
   Inbox, Presentation, X,
 } from "lucide-react";
 
 /* ---------- Utilidades compartidas ---------- */
+
+// Exporta en PDF el apartado con los filtros activos. Es un enlace: el
+// navegador descarga el informe generado por el servidor.
+export function BotonExportar({ contratoId, seccion, filtros = {}, etiqueta = "Exportar PDF", primario = false }) {
+  const p = new URLSearchParams({ seccion });
+  for (const [k, v] of Object.entries(filtros)) {
+    if (v !== null && v !== undefined && v !== "") p.set(k, String(v));
+  }
+  return (
+    <a className={`gc-btn ${primario ? "primary" : "ghost"}`}
+      href={`/api/gc/contracts/${contratoId}/export?${p}`} title="Descargar informe PDF con la información filtrada">
+      <FileDown size={15} /> {etiqueta}
+    </a>
+  );
+}
 
 export const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 

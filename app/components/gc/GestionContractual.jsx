@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { api, enviarJson } from "./api";
 import { enCache, invalidar, pedir, precargar } from "./cache";
-import { Cargando, Confirmar, Drawer, Estado, Toast, Vacio, Visor, fmtFecha, iniciales } from "./ui";
+import { BotonExportar, Cargando, Confirmar, Drawer, Estado, Toast, Vacio, Visor, fmtFecha, iniciales } from "./ui";
 import TabResumen from "./TabResumen";
 import TabDocumentos from "./TabDocumentos";
 import TabActividades from "./TabActividades";
@@ -439,6 +439,7 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
                       </p>
                     </div>
                     <div className="gc-actions">
+                      <BotonExportar contratoId={contrato.id} seccion="completo" etiqueta="Informe PDF" />
                       {puede("CONTRACT_UPDATE") && (
                         <button className="gc-btn ghost" onClick={() => { cargarDirectorio(); setDrawerContrato({ ...contrato }); }}>
                           <Settings size={15} /> Editar

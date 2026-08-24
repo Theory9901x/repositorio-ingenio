@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { api, enviarForm, enviarJson, urlArchivo } from "./api";
 import { invalidar, useDatos } from "./cache";
-import { Cargando, Confirmar, Drawer, IconoArchivo, Vacio, fmtFechaHora, fmtTam, tipoArchivo } from "./ui";
+import { BotonExportar, Cargando, Confirmar, Drawer, IconoArchivo, Vacio, fmtFechaHora, fmtTam, tipoArchivo } from "./ui";
 
 const SECCIONES = [
   ["contratacion", "Documentos contractuales"], ["cronograma", "Cronograma"], ["plan_trabajo", "Plan de trabajo"],
@@ -201,6 +201,7 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor })
               ))}
             </nav>
             <div className="gc-explorer-actions">
+              <BotonExportar contratoId={contratoId} seccion="documentos" filtros={{ carpeta: carpeta || "" }} />
               {puedeSubir && (
                 <>
                   <button className="gc-chip" onClick={() => { setModalCarpeta({ tipo: "nueva", parentId: carpeta }); setNombreCarpeta(""); }}>

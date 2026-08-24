@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { api, enviarForm, enviarJson, urlArchivo } from "./api";
 import { invalidar, sembrar, useDatos } from "./cache";
-import { Anillo, Cargando, Confirmar, Drawer, Estado, IconoArchivo, Vacio, fmtFecha, fmtFechaHora, fmtTam, iniciales } from "./ui";
+import { BotonExportar, Anillo, Cargando, Confirmar, Drawer, Estado, IconoArchivo, Vacio, fmtFecha, fmtFechaHora, fmtTam, iniciales } from "./ui";
 
 const COLUMNAS = "minmax(0,1fr) 130px 150px 120px 120px";
 
@@ -170,11 +170,14 @@ export default function TabEvidencias({ contratoId, detalle, avisar, setVisor, r
                         {persona?.specialty || persona?.cargo || "Contratista"} · {datos.resumen.validadas} de {datos.resumen.total} evidencias validadas
                       </p>
                     </div>
-                    {puedeConfigurar && (
-                      <button className="gc-btn primary" onClick={abrirRequisitos}>
-                        <Plus size={15} /> Crear requisito
-                      </button>
-                    )}
+                    <div className="gc-actions">
+                      <BotonExportar contratoId={contratoId} seccion="evidencias" filtros={{ userId: seleccion || "" }} />
+                      {puedeConfigurar && (
+                        <button className="gc-btn primary" onClick={abrirRequisitos}>
+                          <Plus size={15} /> Crear requisito
+                        </button>
+                      )}
+                    </div>
                     <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
                       <Chip valor={datos.resumen.requeridas} etiqueta="Requeridas" />
                       <Chip valor={datos.resumen.cargadas} etiqueta="Cargadas" tono="info" />

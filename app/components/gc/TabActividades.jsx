@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { api, enviarForm, enviarJson, urlArchivo } from "./api";
 import { invalidar, sembrar, useDatos } from "./cache";
-import {
+import { BotonExportar,
   Cargando, Confirmar, Drawer, Estado, IconoArchivo, MESES, Vacio,
   fmtFecha, fmtFechaHora, fmtTam, iniciales,
 } from "./ui";
@@ -218,11 +218,14 @@ export default function TabActividades({ contratoId, detalle, avisar, setVisor, 
                   {persona?.full_name} · {datos?.actividades?.length || 0} registrada(s)
                 </p>
               </div>
+              <div className="gc-actions">
+              <BotonExportar contratoId={contratoId} seccion="actividades" filtros={{ userId: userId || "", year, month }} />
               {puedeRegistrar && (
                 <button className="gc-btn primary" onClick={() => setDrawer({ activity_date: `${year}-${String(month).padStart(2, "0")}-${String(Math.min(hoy.getDate(), 28)).padStart(2, "0")}`, status: "draft" })}>
                   <Plus size={15} /> Nueva actividad
                 </button>
               )}
+              </div>
             </header>
 
             {!datos ? <div style={{ padding: 18 }}><Cargando filas={4} /></div>

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ClipboardList, Copy, ShieldCheck, UserMinus, UserPlus, Users } from "lucide-react";
 import { api, enviarJson } from "./api";
 import { invalidar, useDatos } from "./cache";
-import { Cargando, Confirmar, Drawer, Vacio, fmtFecha, iniciales } from "./ui";
+import { BotonExportar, Cargando, Confirmar, Drawer, Vacio, fmtFecha, iniciales } from "./ui";
 
 const ROLES = [
   ["supervisor", "Supervisor"], ["contratista", "Contratista"], ["apoyo", "Apoyo administrativo"],
@@ -106,6 +106,7 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
         <header className="gc-card-title" style={{ padding: "16px 18px 0", margin: 0 }}>
           <h3>Participantes del contrato</h3>
           <div className="gc-actions">
+            <BotonExportar contratoId={contratoId} seccion="contratistas" />
             {esAdmin && (
               <>
                 <button className="gc-btn ghost" onClick={abrirDirectorio}>

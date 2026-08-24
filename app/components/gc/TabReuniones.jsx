@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { api, enviarForm, enviarJson, urlArchivo } from "./api";
 import { invalidar, useDatos } from "./cache";
-import { Cargando, Confirmar, Drawer, IconoArchivo, Vacio, fmtFecha, fmtTam } from "./ui";
+import { BotonExportar, Cargando, Confirmar, Drawer, IconoArchivo, Vacio, fmtFecha, fmtTam } from "./ui";
 
 // Reuniones del contrato: cada una es una carpeta fechada con su acta,
 // su lista de asistencia y los soportes que haga falta anexar.
@@ -94,11 +94,14 @@ export default function TabReuniones({ contratoId, detalle, avisar, setVisor }) 
       <section className="gc-card flush">
         <header className="gc-card-title" style={{ padding: "16px 18px 0", margin: 0 }}>
           <h3>Reuniones del contrato</h3>
-          {puedeGestionar && (
-            <button className="gc-btn primary" onClick={() => setDrawerAlta({ meeting_date: new Date().toISOString().slice(0, 10) })}>
-              <Plus size={15} /> Nueva reunión
-            </button>
-          )}
+          <div className="gc-actions">
+            <BotonExportar contratoId={contratoId} seccion="reuniones" />
+            {puedeGestionar && (
+              <button className="gc-btn primary" onClick={() => setDrawerAlta({ meeting_date: new Date().toISOString().slice(0, 10) })}>
+                <Plus size={15} /> Nueva reunión
+              </button>
+            )}
+          </div>
         </header>
 
         {!reuniones.length ? (

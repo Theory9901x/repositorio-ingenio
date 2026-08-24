@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CalendarClock, History } from "lucide-react";
 import { api } from "./api";
-import { Cargando, Vacio, fmtFechaHora } from "./ui";
+import { BotonExportar, Cargando, Vacio, fmtFechaHora } from "./ui";
 
 export default function TabHistorial({ contratoId, detalle }) {
   const [datos, setDatos] = useState(null);
@@ -26,6 +26,7 @@ export default function TabHistorial({ contratoId, detalle }) {
     <section className="gc-card">
       <header className="gc-card-title">
         <h3>{detalle.rol === "TRABAJADOR" ? "Mi actividad en el contrato" : "Historial del contrato"}</h3>
+        <BotonExportar contratoId={contratoId} seccion="historial" filtros={{ vista }} />
         {puedeAuditar && (
           <div className="gc-tabs" style={{ padding: 3, boxShadow: "none", background: "rgba(123,92,250,.07)" }}>
             <button className={vista === "eventos" ? "on" : ""} onClick={() => setVista("eventos")} style={{ padding: "6px 12px", fontSize: 11.5 }}>Eventos</button>
