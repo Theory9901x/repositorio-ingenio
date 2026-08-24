@@ -70,7 +70,9 @@ export default function TabActividades({ contratoId, detalle, avisar, setVisor, 
   async function abrirDetalle(act) {
     try {
       const d = await api(`/api/gc/activities/${act.id}`);
-      setDetalleAct(d); setAnexos([]);
+      if (!d?.actividad) throw new Error("No se pudo cargar el detalle de la actividad");
+      setDetalleAct({ anexos: [], comentarios: [], ...d });
+      setAnexos([]);
     } catch (e) { avisar(e.message, "error"); }
   }
 
@@ -375,10 +377,10 @@ export default function TabActividades({ contratoId, detalle, avisar, setVisor, 
       </Drawer>
 
       {/* Detalle de actividad y sus anexos */}
-      <Drawer abierto={!!detalleAct} titulo={detalleAct?.actividad?.title}
+      <Drawer abierto={!!detalleAct?.actividad} titulo={detalleAct?.actividad?.title}
         subtitulo={detalleAct && `${fmtFecha(detalleAct.actividad.activity_date)} · ${detalleAct.actividad.user_name}`}
         onClose={() => setDetalleAct(null)}
-        pie={detalleAct && (
+        pie={detalleAct?.actividad && (
           <>
             {(detalleAct.actividad.user_id === detalle.yo.id || detalle.rol === "ADMIN") && detalleAct.actividad.status !== "approved" && (
               <button className="gc-btn danger" style={{ marginRight: "auto" }} onClick={() => setConfirmar(detalleAct.actividad)}>
@@ -396,7 +398,7 @@ export default function TabActividades({ contratoId, detalle, avisar, setVisor, 
             )}
           </>
         )}>
-        {detalleAct && (
+        {detalleAct?.actividad && (
           <>
             <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
               <Estado valor={detalleAct.actividad.status} />
