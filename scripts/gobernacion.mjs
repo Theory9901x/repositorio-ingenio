@@ -34,10 +34,10 @@ const db = await mysql.createConnection({
 
 // --- Situación actual -------------------------------------------------------
 const [contratos] = await db.query(
-  "SELECT id, contract_number, title, entity_name, internal_responsible_id FROM contract_routes ORDER BY id"
+  "SELECT id, code, title, entity_name, internal_responsible_id FROM contract_routes ORDER BY id"
 );
 console.log("\nCONTRATOS");
-for (const c of contratos) console.log(` #${c.id}  ${c.contract_number || "-"}  ${c.title || ""}  · entidad: ${c.entity_name || "-"}`);
+for (const c of contratos) console.log(` #${c.id}  ${c.code || "-"}  ${c.title || ""}  · entidad: ${c.entity_name || "-"}`);
 
 const [usuarios] = await db.query(
   "SELECT id, full_name, username, email, role, is_active FROM users ORDER BY id"
@@ -54,7 +54,7 @@ console.log(" empresas:", empresas.filter((e) => terra(e.name)).map((e) => `#${e
 
 // El contrato de la Gobernación se localiza por entidad o título.
 const gob = contratos.find((c) => /gobernaci/i.test(`${c.entity_name || ""} ${c.title || ""}`));
-console.log("\nCONTRATO DE LA GOBERNACIÓN:", gob ? `#${gob.id} · ${gob.title || gob.contract_number}` : "NO ENCONTRADO");
+console.log("\nCONTRATO DE LA GOBERNACIÓN:", gob ? `#${gob.id} · ${gob.title || gob.code}` : "NO ENCONTRADO");
 
 if (!APLICAR) {
   console.log("\n(solo informe: vuelve a ejecutar con `aplicar` para crear e inscribir)");
