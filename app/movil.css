@@ -15,9 +15,9 @@
 @media (max-width: 900px) {
 
   /* ---------- Cajón lateral ---------- */
-  .shell, .gc, .cm { grid-template-columns: 1fr !important; display: block !important; }
+  .shell, .gc, .cm, .me-shell { grid-template-columns: 1fr !important; display: block !important; }
 
-  .sidebar, .gc-side, .cm-side {
+  .sidebar, .gc-side, .cm-side, .me-sidebar {
     position: fixed !important;
     top: 0; left: 0; bottom: 0;
     width: min(84vw, 310px);
@@ -40,12 +40,12 @@
     border-right: 1px solid rgba(0, 0, 0, .08);
     box-shadow: 0 0 60px rgba(10, 20, 80, .3);
   }
-  .sidebar.abierto, .gc-side.abierto, .cm-side.abierto { transform: translateX(0); }
+  .sidebar.abierto, .gc-side.abierto, .cm-side.abierto, .me-sidebar.abierto { transform: translateX(0); }
 
   /* Dentro del cajón la navegación siempre es vertical. */
-  .side-nav, .gc-nav, .cm-nav { flex-direction: column !important; flex-wrap: nowrap !important; width: 100%; }
-  .side-nav button, .gc-nav button, .cm-nav button { width: 100%; justify-content: flex-start; }
-  .gc-side-user, .cm-side-user, .user-card { margin-top: auto !important; width: 100%; }
+  .side-nav, .gc-nav, .cm-nav, .me-nav { flex-direction: column !important; flex-wrap: nowrap !important; width: 100%; }
+  .side-nav button, .gc-nav button, .cm-nav button, .me-nav button { width: 100%; justify-content: flex-start; }
+  .gc-side-user, .cm-side-user, .me-side-user, .user-card { margin-top: auto !important; width: 100%; }
   .side-block { display: none; }
 
   /* Capa que oscurece el contenido y cierra al tocar. */
@@ -88,6 +88,15 @@
   /* En pantallas estrechas los botones de la barra se reducen a su icono. */
   .top-actions .chip-btn { padding: 0 11px; height: 38px; font-size: 0; gap: 0; }
   .top-actions .chip-btn svg { font-size: 13px; }
+
+  /* Mi espacio: barra en fila y buscador a lo ancho debajo. */
+  .me-topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    padding-top: calc(10px + env(safe-area-inset-top)) !important; }
+  .me-topbar-title { flex: 1; min-width: 0; }
+  .me-topbar-title h1 { font-size: 17px !important; margin: 0; }
+  .me-topbar-title p { display: none; }
+  .me-search { order: 10; flex: 1 1 100%; }
+  .me-search kbd { display: none; }
 
   /* Cabeceras propias de los módulos. */
   .gc-top, .cm-top {

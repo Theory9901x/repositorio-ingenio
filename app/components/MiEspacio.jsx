@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
+import { Menu,
   AlertCircle, ArrowLeft, Bell, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Download,
   Eye, FileArchive, FileImage, FileSpreadsheet, FileText, Folder, FolderOpen,
   FolderPlus, Grid2X2, Home, Link2, List, LogOut, MoreHorizontal, Pencil, Plus,
@@ -64,6 +64,7 @@ function saveLS(key, value) {
 const PAGE_SIZE = 8;
 
 export default function MiEspacio({ user }) {
+  const [menuAbierto, setMenuAbierto] = useState(false); // cajón lateral en móvil
   const [folders, setFolders] = useState([]);
   const [files, setFiles] = useState([]);
   const [repoFavs, setRepoFavs] = useState([]);
@@ -451,7 +452,8 @@ export default function MiEspacio({ user }) {
       <input ref={fileInput} type="file" hidden onChange={(e) => { upload(e.target.files?.[0]); e.target.value = ""; }} />
 
       {/* ============ Sidebar ============ */}
-      <aside className="me-sidebar">
+      {menuAbierto && <div className="movil-tapa" onClick={() => setMenuAbierto(false)} />}
+      <aside className={`me-sidebar${menuAbierto ? " abierto" : ""}`} onClick={() => setMenuAbierto(false)}>
         <div className="me-logo">
           <span className="me-logo-mark"><img src="/branding/logo-grupo-ingenio.png" alt="Grupo Ingenio" /></span>
           <div>
@@ -485,6 +487,7 @@ export default function MiEspacio({ user }) {
       {/* ============ Main ============ */}
       <div className="me-main">
         <header className="me-topbar">
+          <button className="movil-menu" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú"><Menu size={19} /></button>
           <div className="me-topbar-title">
             <h1>Mi espacio / Plan</h1>
             <p>Tu espacio personal para organizar y gestionar tus documentos</p>

@@ -93,7 +93,7 @@ body::before {
 /* ---------- Excepciones ---------- */
 /* El panel lateral es una pieza sólida a propósito: da el contraste que
    permite que todo lo demás se lea como cristal. */
-.sidebar, .gc-side, .cm-side, .movil-tapa { backdrop-filter: none; }
+.sidebar, .gc-side, .cm-side, .me-sidebar, .movil-tapa { backdrop-filter: none; }
 
 /* Sobre superficie oscura o de color el cristal claro no aplica. */
 .expediente-panel > header, .btn-primary, .gc-btn.primary, .cm-btn.primary,
