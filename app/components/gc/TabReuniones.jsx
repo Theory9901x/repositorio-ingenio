@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import {
-  CalendarDays, ClipboardCheck, Download, Eye, FileText, MapPin, Paperclip, Plus, Trash2, Upload, Users,
+  CalendarDays, ClipboardCheck, Download, Eye, FileDown, FileText, FileType2, MapPin, Paperclip, Plus, Trash2, Upload, Users,
 } from "lucide-react";
 import { api, enviarForm, enviarJson, urlArchivo } from "./api";
 import { invalidar, useDatos } from "./cache";
@@ -64,6 +64,11 @@ export default function TabReuniones({ contratoId, detalle, avisar, setVisor }) 
       cargar();
     } catch (e) { avisar(e.message, "error"); }
   }
+
+  // Acta y asistencia también se descargan como documento formal generado
+  // por el sistema, en PDF o en Word, aunque no se haya subido un archivo.
+  const documento = (reunion, tipo, formato) =>
+    `/api/gc/contracts/${contratoId}/meetings/documento?meetingId=${reunion.id}&tipo=${tipo}&formato=${formato}`;
 
   function ver(reunion, archivo) {
     setVisor({
@@ -157,7 +162,7 @@ export default function TabReuniones({ contratoId, detalle, avisar, setVisor }) 
                                   <b>{etiqueta}</b>
                                   {archivo
                                     ? <small>{archivo.file_name} · {fmtTam(archivo.size_bytes)}</small>
-                                    : <small>Sin anexar</small>}
+                                    : <small>Sin archivo · descárgala en PDF o Word</small>}
                                 </span>
                                 <div className="gc-rowact">
                                   {archivo && (
@@ -166,8 +171,12 @@ export default function TabReuniones({ contratoId, detalle, avisar, setVisor }) 
                                       <a className="gc-icbtn" title="Descargar" href={`${urlArchivo("reunion", archivo.id)}&download=1`}><Download size={14} /></a>
                                     </>
                                   )}
+                                  <a className="gc-icbtn" title={`Descargar ${etiqueta.toLowerCase()} en PDF`}
+                                    href={documento(r, kind, "pdf")}><FileDown size={14} /></a>
+                                  <a className="gc-icbtn" title={`Descargar ${etiqueta.toLowerCase()} en Word`}
+                                    href={documento(r, kind, "word")}><FileType2 size={14} /></a>
                                   {puedeGestionar && (
-                                    <label className="gc-icbtn" title={archivo ? "Reemplazar" : "Anexar"} style={{ cursor: "pointer" }}>
+                                    <label className="gc-icbtn" title={archivo ? "Reemplazar archivo" : "Anexar archivo"} style={{ cursor: "pointer" }}>
                                       {ocupado ? <ClipboardCheck size={14} /> : <Upload size={14} />}
                                       <input type="file" hidden disabled={!!ocupado}
                                         onChange={(e) => { subir(r, kind, e.target.files?.[0]); e.target.value = ""; }} />
