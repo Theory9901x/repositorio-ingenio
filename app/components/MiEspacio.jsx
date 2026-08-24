@@ -106,7 +106,15 @@ export default function MiEspacio({ user }) {
     if (prefs.vivid) setVivid(true);
   }, []);
   useEffect(() => {
-    const close = () => { setMenuId(null); setNotifOpen(false); };
+    // React se monta sobre el document en el App Router, así que este listener
+    // vive en el mismo nodo que los handlers de React y stopPropagation no lo
+    // frena: hay que decidir por el destino del clic.
+    const close = (e) => {
+      const t = e.target;
+      if (t instanceof Element && (t.closest(".me-menu") || t.closest(".me-dots") || t.closest(".me-notif-wrap"))) return;
+      setMenuId(null);
+      setNotifOpen(false);
+    };
     const key = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); searchInput.current?.focus(); }
     };
