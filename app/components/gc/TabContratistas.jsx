@@ -12,6 +12,17 @@ const ROLES = [
 ];
 const COLUMNAS = "minmax(0,1fr) 150px 120px 110px 90px";
 
+// "Natalia Forero Bejarano" → "natalia.forero". Debe coincidir con el criterio
+// del servidor para que el usuario mostrado sea el que se guarda.
+function sugerirUsuario(nombreCompleto) {
+  const partes = String(nombreCompleto || "")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .toLowerCase().replace(/[^a-z\s]/g, " ")
+    .split(/\s+/).filter(Boolean);
+  if (!partes.length) return "";
+  return (partes[1] ? `${partes[0]}.${partes[1]}` : partes[0]).slice(0, 60);
+}
+
 export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
   const [directorio, setDirectorio] = useState([]);
   const [drawer, setDrawer] = useState(null);
@@ -45,7 +56,7 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
   async function crearUsuario() {
     setGuardando(true);
     try {
-      const r = await enviarJson("/api/gc/users", "POST", alta);
+      const r = await enviarJson("/api/gc/users", "POST", { ...alta, username: alta.username ?? sugerirUsuario(alta.full_name) });
       await enviarJson(`/api/gc/contracts/${contratoId}/participants`, "POST", {
         user_id: r.id, role_in_contract: alta.role_in_contract, specialty: alta.cargo, status: "activo",
       });
@@ -96,6 +107,7 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
   const puedeGestionar = detalle.permisos.includes("PARTICIPANT_MANAGE");
   const esAdmin = detalle.rol === "ADMIN";
   const yaAsociados = new Set(lista.map((p) => p.user_id));
+  const sugerido = sugerirUsuario(alta?.full_name);
 
   return (
     <>
@@ -219,7 +231,7 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
                 </span>
                 <span className="txt">
                   <b>{u.full_name}</b>
-                  <small style={{ fontFamily: "'JetBrains Mono', monospace" }}>{u.email || "sin correo"}</small>
+                  <small style={{ fontFamily: "'JetBrains Mono', monospace" }}>{u.username || u.email || "sin usuario"}</small>
                   <small>
                     {u.cargo || "Sin cargo"}
                     {u.role === "admin" && <span className="gc-badge info" style={{ marginLeft: 6 }}>Administrador</span>}
@@ -251,7 +263,7 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
         onClose={() => setAlta(null)}
         pie={<>
           <button className="gc-btn ghost" onClick={() => setAlta(null)}>Cancelar</button>
-          <button className="gc-btn primary" disabled={guardando || !alta?.full_name?.trim() || !alta?.email?.trim() || !alta?.cedula?.trim()} onClick={crearUsuario}>
+          <button className="gc-btn primary" disabled={guardando || !alta?.full_name?.trim() || !alta?.cedula?.trim()} onClick={crearUsuario}>
             {guardando ? "Creando…" : "Crear usuario"}
           </button>
         </>}>
@@ -263,10 +275,16 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
                 placeholder="Natalia Forero Bejarano" autoFocus />
             </div>
             <div className="gc-field">
-              <label>Correo electrónico *</label>
+              <label>Usuario *</label>
+              <input value={alta.username ?? sugerido} onChange={(e) => setAlta({ ...alta, username: e.target.value })}
+                placeholder="natalia.forero" />
+              <span className="hint">Con esto inicia sesión. Se sugiere a partir del nombre.</span>
+            </div>
+            <div className="gc-field">
+              <label>Correo electrónico</label>
               <input type="email" value={alta.email || ""} onChange={(e) => setAlta({ ...alta, email: e.target.value })}
-                placeholder="natalia@correo.com" />
-              <span className="hint">Es el usuario con el que inicia sesión.</span>
+                placeholder="opcional" />
+              <span className="hint">Opcional. También sirve para entrar.</span>
             </div>
             <div className="gc-field">
               <label>Cédula *</label>
@@ -307,7 +325,7 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
             <div style={{ display: "grid", gap: 10, background: "rgba(123,92,250,.08)", borderRadius: 14, padding: 15, marginBottom: 16 }}>
               <div>
                 <span style={{ display: "block", fontSize: 9.5, fontWeight: 800, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--gc-muted)" }}>Usuario</span>
-                <b style={{ fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>{credencial.email}</b>
+                <b style={{ fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>{credencial.username || credencial.email}</b>
               </div>
               <div>
                 <span style={{ display: "block", fontSize: 9.5, fontWeight: 800, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--gc-muted)" }}>Contraseña temporal</span>

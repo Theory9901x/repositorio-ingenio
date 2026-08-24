@@ -14,9 +14,11 @@ export async function POST(req) {
   }
   const pool = getPool();
   await ensureAdminSchema(pool);
+  // Se admite tanto el correo como el nombre de usuario.
+  const identificador = email.toLowerCase().trim();
   const [[user]] = await pool.query(
-    "SELECT id, password_hash FROM users WHERE email=? AND is_active=1",
-    [email.toLowerCase().trim()]
+    "SELECT id, password_hash FROM users WHERE (LOWER(email)=? OR LOWER(username)=?) AND is_active=1 LIMIT 1",
+    [identificador, identificador]
   );
   if (!user) {
     return NextResponse.json({ ok: false }, { status: 401 });

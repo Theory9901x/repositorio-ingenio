@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { contexto, auditar, rolEnContrato, ROL } from "@/lib/gc/rbac";
+import { sugerirUsuario } from "@/lib/adminSchema";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export async function GET(req) {
   }
 
   const [rows] = await pool.query(
-    `SELECT u.id, u.full_name, u.cargo, u.email, u.role, u.is_active,
+    `SELECT u.id, u.full_name, u.cargo, u.email, u.username, u.role, u.is_active,
             (up.photo_data IS NOT NULL) AS has_photo
        FROM users u LEFT JOIN user_profiles up ON up.user_id=u.id
       WHERE u.is_active=1 ORDER BY u.full_name`
@@ -46,29 +47,42 @@ export async function POST(req) {
   const cedula = (b.cedula || "").toString().trim();
   const cargo = (b.cargo || "").toString().trim();
 
-  if (!full_name) return Response.json({ error: "El nombre completo es obligatorio" }, { status: 400 });
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Response.json({ error: "Correo electrónico inválido" }, { status: 400 });
-  if (!cedula) return Response.json({ error: "La cédula es obligatoria" }, { status: 400 });
+  // El identificador principal es el nombre de usuario; si no se indica, se
+  // deduce del nombre completo (Natalia Forero → natalia.forero).
+  const username = (b.username || sugerirUsuario(full_name)).toString().trim().toLowerCase();
 
-  const [[existe]] = await pool.query("SELECT id FROM users WHERE email=?", [email]);
-  if (existe) return Response.json({ error: "Ya existe un usuario con ese correo" }, { status: 409 });
+  if (!full_name) return Response.json({ error: "El nombre completo es obligatorio" }, { status: 400 });
+  if (!cedula) return Response.json({ error: "La cédula es obligatoria" }, { status: 400 });
+  if (!/^[a-z0-9._-]{3,60}$/.test(username)) {
+    return Response.json({ error: "El usuario solo admite letras, números, puntos, guiones y guion bajo" }, { status: 400 });
+  }
+  // El correo es opcional: se puede entrar solo con el nombre de usuario.
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return Response.json({ error: "Correo electrónico inválido" }, { status: 400 });
+  }
+  if (email) {
+    const [[existe]] = await pool.query("SELECT id FROM users WHERE LOWER(email)=?", [email]);
+    if (existe) return Response.json({ error: "Ya existe un usuario con ese correo" }, { status: 409 });
+  }
+  const [[usado]] = await pool.query("SELECT id FROM users WHERE LOWER(username)=?", [username]);
+  if (usado) return Response.json({ error: "Ese nombre de usuario ya está en uso" }, { status: 409 });
 
   const clave = claveTemporal();
   const hash = await bcrypt.hash(clave, 12);
   const rol = b.role === "admin" ? "admin" : "usuario";
 
   const [r] = await pool.query(
-    "INSERT INTO users (full_name, cedula, email, password_hash, cargo, role, is_active) VALUES (?,?,?,?,?,?,1)",
-    [full_name, cedula, email, hash, cargo || "Usuario", rol]
+    "INSERT INTO users (full_name, cedula, email, username, password_hash, cargo, role, is_active) VALUES (?,?,?,?,?,?,?,1)",
+    [full_name, cedula, email || null, username, hash, cargo || "Usuario", rol]
   );
 
   await auditar(pool, {
     me, entidad: "user", entidadId: r.insertId, accion: "USER_CREATED",
-    descripcion: `Usuario creado: ${full_name} (${email}) con rol ${rol}`, req,
+    descripcion: `Usuario creado: ${full_name} (${username}) con rol ${rol}`, req,
   });
 
   // La contraseña viaja una única vez en esta respuesta.
-  return Response.json({ ok: true, id: r.insertId, full_name, email, clave });
+  return Response.json({ ok: true, id: r.insertId, full_name, email, username, clave });
 }
 
 // Restablecer la contraseña de un usuario existente.
@@ -82,7 +96,7 @@ export async function PATCH(req) {
   const userId = Number(b.userId);
   if (!userId) return Response.json({ error: "Usuario no indicado" }, { status: 400 });
 
-  const [[usuario]] = await pool.query("SELECT id, full_name, email FROM users WHERE id=?", [userId]);
+  const [[usuario]] = await pool.query("SELECT id, full_name, email, username FROM users WHERE id=?", [userId]);
   if (!usuario) return Response.json({ error: "El usuario no existe" }, { status: 404 });
 
   const clave = claveTemporal();
@@ -94,5 +108,5 @@ export async function PATCH(req) {
     descripcion: `Contraseña restablecida para ${usuario.full_name} (${usuario.email})`, req,
   });
 
-  return Response.json({ ok: true, full_name: usuario.full_name, email: usuario.email, clave });
+  return Response.json({ ok: true, full_name: usuario.full_name, email: usuario.email, username: usuario.username, clave });
 }
