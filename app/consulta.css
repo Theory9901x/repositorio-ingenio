@@ -31,23 +31,26 @@
 .consulta-luz i {
   position: absolute;
   border-radius: 50%;
-  filter: blur(90px);
-  opacity: .55;
+  filter: blur(70px);
+  opacity: 1;
   display: block;
 }
 .consulta-luz i:nth-child(1) {
-  width: 460px; height: 460px; top: -160px; left: -80px;
-  background: radial-gradient(circle, rgba(34, 215, 223, .75), transparent 68%);
+  width: 620px; height: 620px; top: -190px; left: -110px;
+  background: radial-gradient(circle, rgba(34, 215, 223, .95), rgba(34, 215, 223, .3) 45%, transparent 70%);
 }
 .consulta-luz i:nth-child(2) {
-  width: 520px; height: 520px; top: -110px; right: -140px;
-  background: radial-gradient(circle, rgba(0, 23, 232, .45), transparent 66%);
+  width: 680px; height: 680px; top: -160px; right: -190px;
+  background: radial-gradient(circle, rgba(0, 23, 232, .55), rgba(0, 23, 232, .18) 46%, transparent 70%);
 }
 .consulta-luz i:nth-child(3) {
-  width: 420px; height: 420px; bottom: -180px; left: 32%;
-  background: radial-gradient(circle, rgba(123, 92, 250, .38), transparent 68%);
+  width: 560px; height: 560px; bottom: -240px; left: 28%;
+  background: radial-gradient(circle, rgba(123, 92, 250, .5), rgba(123, 92, 250, .16) 46%, transparent 70%);
 }
 .consulta > * { position: relative; z-index: 1; }
+
+/* El contenedor de la vista no debe tapar la luz del fondo. */
+.main:has(.consulta), .main:has(.consulta) .dashboard-wrap { background: transparent; }
 
 /* ---------- Portada ---------- */
 .consulta-hero {
@@ -56,9 +59,9 @@
   border-radius: 30px;
   border: 1px solid var(--borde-vidrio);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, .72), rgba(232, 240, 255, .42));
-  backdrop-filter: blur(26px) saturate(150%);
-  -webkit-backdrop-filter: blur(26px) saturate(150%);
+    linear-gradient(135deg, rgba(255, 255, 255, .58), rgba(255, 255, 255, .3));
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
   box-shadow: var(--sombra-vidrio), inset 0 1px 0 rgba(255, 255, 255, .9);
   padding: 38px 38px 30px;
   margin-bottom: 30px;
@@ -139,9 +142,9 @@
   overflow: hidden;
   border-radius: 20px;
   border: 1px solid var(--borde-vidrio);
-  background: linear-gradient(150deg, rgba(255, 255, 255, .82), rgba(255, 255, 255, .5));
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: linear-gradient(150deg, rgba(255, 255, 255, .68), rgba(255, 255, 255, .36));
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
   box-shadow: 0 12px 30px -24px rgba(16, 26, 99, .5), inset 0 1px 0 rgba(255, 255, 255, .85);
   padding: 17px 18px;
   transition: transform .26s var(--ease), box-shadow .26s var(--ease);
@@ -249,9 +252,9 @@
   text-align: left;
   border-radius: 22px;
   border: 1px solid var(--borde-vidrio);
-  background: linear-gradient(155deg, rgba(255, 255, 255, .8), rgba(255, 255, 255, .46));
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  background: linear-gradient(155deg, rgba(255, 255, 255, .66), rgba(255, 255, 255, .34));
+  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
   box-shadow: 0 14px 34px -26px rgba(16, 26, 99, .5), inset 0 1px 0 rgba(255, 255, 255, .85);
   padding: 20px;
   cursor: pointer;
