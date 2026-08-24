@@ -1,5 +1,6 @@
 import { contexto, auditar, ROL } from "@/lib/gc/rbac";
 import { guardarArchivo, borrarArchivo, FileError } from "@/lib/gc/files";
+import { avisar, usuariosDelContrato, revisoresDelContrato } from "@/lib/notificaciones";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +71,16 @@ export async function POST(req, { params }) {
      b.due_date || null, asignado ? "user" : "all", asignado, b.allow_multiple ? 1 : 0, me.id]
   );
   await auditar(pool, { me, contractId, entidad: "document_request", entidadId: r.insertId, accion: "DOCUMENT_REQUEST_CREATED", descripcion: `Documento solicitado: ${name}`, req });
+
+  // Se avisa a quien debe entregarlo: al destinatario o a todo el contrato.
+  await avisar(pool, {
+    para: asignado ? [asignado] : await usuariosDelContrato(pool, contractId),
+    actorId: me.id, tipo: "document_request", entidadId: r.insertId, contractId,
+    titulo: `Te solicitaron un documento: ${name}`,
+    mensaje: b.due_date ? `Fecha límite: ${b.due_date}` : "Sin fecha límite",
+    severidad: "warning",
+    link: `/gestion-contractual/contrato/${contractId}/solicitudes`,
+  });
   return Response.json({ ok: true, id: r.insertId });
 }
 
@@ -114,6 +125,15 @@ export async function PUT(req, { params }) {
        guardado.size_bytes, (fd.get("comment") || "").toString() || null]
     );
     await auditar(pool, { me, contractId, entidad: "submission", entidadId: r.insertId, accion: "DOCUMENT_REQUEST_ANSWERED", descripcion: `Documento entregado: ${solicitud.name}`, req });
+
+    // Quien revisa se entera de que hay algo esperando.
+    await avisar(pool, {
+      para: await revisoresDelContrato(pool, contractId), actorId: me.id,
+      tipo: "submission", entidadId: r.insertId, contractId,
+      titulo: `${me.full_name} entregó «${solicitud.name}»`,
+      mensaje: "La entrega está pendiente de revisión",
+      link: `/gestion-contractual/contrato/${contractId}/solicitudes`,
+    });
     return Response.json({ ok: true, id: r.insertId });
   } catch (e) {
     if (e instanceof FileError) return Response.json({ error: e.message }, { status: e.status });

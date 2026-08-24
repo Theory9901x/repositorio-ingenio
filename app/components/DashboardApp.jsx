@@ -5,7 +5,7 @@ import {
   Archive, ArrowRight, BarChart3, BriefcaseBusiness, FileSearch, FileText, ScanSearch,
   Grid2X2, LogOut, Map, MessageCircle, Search, Settings, ShieldCheck, UserRound, X,
   Mail, Lock, IdCard, Sparkles, CheckCircle2, Paperclip, FolderSearch,
-  Eye, EyeOff, Workflow, Users, FileCheck2,
+  Eye, EyeOff, Workflow, Users, FileCheck2, ClipboardList,
 } from "lucide-react";
 import AdminDocumentPanel from "./AdminDocumentPanel";
 import ContractRoutesPanel from "./ContractRoutesPanel";
@@ -19,6 +19,7 @@ import ExecutiveDashboardPanel from "./ExecutiveDashboardPanel";
 import AdvancedSearchPanel from "./AdvancedSearchPanel";
 import AlertsCenter from "./AlertsCenter";
 import AuditLogPanel from "./AuditLogPanel";
+import MisPendientes from "./MisPendientes";
 
 const TIERS = [
   ["estrategico", "Procesos estratégicos", "#0017E8"],
@@ -26,7 +27,7 @@ const TIERS = [
   ["apoyo", "Procesos de apoyo", "#101A63"],
   ["evaluacion", "Procesos de evaluación", "#6477C8"],
 ];
-const SECTION_TITLES = { consultation: "Consulta documental", advancedSearch:"Búsqueda avanzada", executive:"Tablero Gerencial", workspace: "Mi espacio / Plan", contracts: "Contratos / Rutas", internalDocs: "Documentación Interna", community:"Comunidad", profile:"Mi perfil", admin: "Administración" };
+const SECTION_TITLES = { pendientes: "Mis pendientes", consultation: "Consulta documental", advancedSearch:"Búsqueda avanzada", executive:"Tablero Gerencial", workspace: "Mi espacio / Plan", contracts: "Contratos / Rutas", internalDocs: "Documentación Interna", community:"Comunidad", profile:"Mi perfil", admin: "Administración" };
 const initialAuth = { full_name: "", cedula: "", email: "", password: "", cargo: "" };
 
 async function readJson(response) {
@@ -118,6 +119,7 @@ export default function DashboardApp() {
   const navItems = [
     ["consultation", FileSearch, "Consulta documental"],
     ["advancedSearch", ScanSearch, "Búsqueda avanzada"],
+    ["pendientes", ClipboardList, "Mis pendientes"],
     ...(user.isAdmin ? [["executive", BarChart3, "Tablero Gerencial"]] : []),
     ["workspace", UserRound, "Mi espacio / Plan"],
     ["contracts", BriefcaseBusiness, "Contratos / Rutas"],
@@ -138,10 +140,12 @@ export default function DashboardApp() {
       <header className="topbar"><div className="top-title"><span className="eyebrow mini">Repositorio Ingenio</span><strong>{selectedProcess ? selectedProcess.name : SECTION_TITLES[section]}</strong></div><div className="top-actions"><AlertsCenter/><button className="chip-btn" onClick={loadAll} disabled={loadingData}>Actualizar</button><button className="chip-btn danger-lite" onClick={logout}><LogOut size={16} /> Salir</button></div></header>
       <div className="wrap dashboard-wrap">
         {dataError && <div className="error-banner">{dataError}<button onClick={loadAll}>Reintentar</button></div>}
+        {section === "consultation" && !selectedProcess && <MisPendientes compacto onVerTodo={() => navigate("pendientes")} />}
         {section === "consultation" && (selectedProcess
           ? <ProcessDetailView process={selectedProcess} docs={docs} docTypes={docTypes} user={user} onChanged={loadAll} onBack={() => setSelectedProcess(null)} onOpenDoc={setDetail} />
           : <Consultation processes={matchingProcesses} docs={docs} query={query} setQuery={setQuery} view={view} setView={setView} countFor={countFor} onOpen={setSelectedProcess} mapFailed={mapFailed} setMapFailed={setMapFailed} />)}
         {section === "advancedSearch" && <AdvancedSearchPanel />}
+        {section === "pendientes" && <MisPendientes />}
         {section === "executive" && user.isAdmin && <ExecutiveDashboardPanel />}
         {section === "contracts" && <ContractRoutesPanel user={user} />}
         {section === "internalDocs" && user.isAdmin && <InternalDocumentationPanel user={user} />}

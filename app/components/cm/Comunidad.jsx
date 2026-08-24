@@ -83,6 +83,17 @@ export default function Comunidad() {
   }, []);
   useEffect(() => { cargarContexto(); }, [cargarContexto]);
 
+  // Si la URL trae ?post=ID (p. ej. desde una notificación), se abre directo.
+  useEffect(() => {
+    const id = Number(new URLSearchParams(window.location.search).get("post"));
+    if (!id) return;
+    (async () => {
+      try { const det = await api(`/api/cm/posts/${id}`); setAbierta(det.post); }
+      catch { /* la publicación pudo ser eliminada */ }
+      window.history.replaceState({}, "", "/comunidad");
+    })();
+  }, []);
+
   // Búsqueda con retardo para no consultar en cada tecla.
   useEffect(() => {
     const id = setTimeout(() => setFiltros((f) => ({ ...f, q: busqueda.trim() })), 320);

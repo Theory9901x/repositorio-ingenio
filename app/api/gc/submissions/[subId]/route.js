@@ -2,6 +2,7 @@ import { contexto, auditar, ROL } from "@/lib/gc/rbac";
 import { ensureGcSchema } from "@/lib/gc/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { borrarArchivo } from "@/lib/gc/files";
+import { avisar } from "@/lib/notificaciones";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,19 @@ export async function PUT(req, { params }) {
     accion: nuevo === "aprobado" ? "SUBMISSION_APPROVED" : "SUBMISSION_REJECTED",
     descripcion: `Entrega «${entrega.request_name}»: ${entrega.status} → ${nuevo}`,
     antes: entrega.status, despues: nuevo, req,
+  });
+
+  // El autor de la entrega debe saber en qué quedó su documento.
+  const desenlace = {
+    aprobado: ["success", `Aprobaron tu entrega: ${entrega.request_name}`],
+    rechazado: ["danger", `Rechazaron tu entrega: ${entrega.request_name}`],
+    requiere_ajuste: ["warning", `Debes ajustar tu entrega: ${entrega.request_name}`],
+  }[nuevo];
+  await avisar(pool, {
+    para: entrega.user_id, actorId: me.id, tipo: "submission", entidadId: id,
+    contractId: entrega.contract_id, severidad: desenlace[0], titulo: desenlace[1],
+    mensaje: observacion || "Sin observaciones",
+    link: `/gestion-contractual/contrato/${entrega.contract_id}/solicitudes`,
   });
   return Response.json({ ok: true, status: nuevo });
 }

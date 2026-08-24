@@ -1,4 +1,5 @@
 import { contextoCm, CATEGORIAS, slugify, avisarMenciones } from "@/lib/cm/schema";
+import { avisar, usuariosActivos } from "@/lib/notificaciones";
 import { guardarArchivo, FileError } from "@/lib/gc/files";
 
 export const dynamic = "force-dynamic";
@@ -129,6 +130,15 @@ export async function POST(req) {
 
     // Menciones: se avisa a las personas nombradas con @.
     await avisarMenciones(pool, me, body, topicId, title);
+
+    // Y la publicación en sí se anuncia a toda la organización.
+    await avisar(pool, {
+      para: await usuariosActivos(pool), actorId: me.id,
+      tipo: "forum", entidadId: topicId,
+      titulo: `${me.full_name} publicó en Comunidad`,
+      mensaje: title, severidad: tipo === "anuncio" ? "warning" : "info",
+      link: `/comunidad?post=${topicId}`,
+    });
 
     return Response.json({ ok: true, id: topicId });
   } catch (e) {

@@ -13,7 +13,7 @@ export async function GET() {
 
   const { where, args } = filtroContratosVisibles(me);
 
-  const [contratos] = await pool.query(
+  const consultaContratos = pool.query(
     `SELECT c.id, c.title, c.code, c.status, c.company_id, c.entity_name, c.object,
             DATE_FORMAT(c.start_date,'%Y-%m-%d') start_date,
             DATE_FORMAT(c.end_date,'%Y-%m-%d') end_date,
@@ -33,23 +33,30 @@ export async function GET() {
     args
   );
 
-  const idsVisibles = contratos.map((c) => c.id);
-
   // Empresas: el administrador las ve todas; el resto solo aquellas donde
-  // participa en algún contrato.
-  let empresas = [];
+  // participa en algún contrato. Para el administrador ambas consultas son
+  // independientes y viajan en paralelo.
+  let contratos, empresas = [];
   if (me.isAdmin) {
-    const [rows] = await pool.query(
-      `SELECT e.*, DATE_FORMAT(e.next_review_date,'%Y-%m-%d') next_review_date,
-              u.full_name AS responsible_name,
-              (SELECT COUNT(*) FROM contract_routes c WHERE c.company_id=e.id) AS contratos,
-              (SELECT COUNT(*) FROM contract_routes c WHERE c.company_id=e.id AND c.status='activo') AS contratos_activos
-         FROM contract_companies e
-         LEFT JOIN users u ON u.id=e.internal_responsible_id
-        ORDER BY e.status='activa' DESC, e.name`
-    );
-    empresas = rows;
-  } else if (idsVisibles.length) {
+    const [[c], [e]] = await Promise.all([
+      consultaContratos,
+      pool.query(
+        `SELECT e.*, DATE_FORMAT(e.next_review_date,'%Y-%m-%d') next_review_date,
+                u.full_name AS responsible_name,
+                (SELECT COUNT(*) FROM contract_routes c WHERE c.company_id=e.id) AS contratos,
+                (SELECT COUNT(*) FROM contract_routes c WHERE c.company_id=e.id AND c.status='activo') AS contratos_activos
+           FROM contract_companies e
+           LEFT JOIN users u ON u.id=e.internal_responsible_id
+          ORDER BY e.status='activa' DESC, e.name`
+      ),
+    ]);
+    contratos = c;
+    empresas = e;
+  } else {
+    [contratos] = await consultaContratos;
+  }
+  const idsVisibles = contratos.map((c) => c.id);
+  if (!me.isAdmin && idsVisibles.length) {
     const ph = idsVisibles.map(() => "?").join(",");
     const [rows] = await pool.query(
       `SELECT e.*, DATE_FORMAT(e.next_review_date,'%Y-%m-%d') next_review_date,

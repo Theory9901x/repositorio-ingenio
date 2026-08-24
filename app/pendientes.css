@@ -1,0 +1,76 @@
+/* Panel «Mis solicitudes»: lo que cada persona tiene sobre la mesa. */
+
+.pendientes { padding: 8px 2px 24px; }
+.pendientes-cargando { padding: 40px; text-align: center; color: var(--muted); }
+
+.pendientes-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+.pendientes-head h2 { font-size: 32px; margin: 6px 0; }
+.pendientes-head p { margin: 0; color: #657188; max-width: 60ch; }
+
+.pendientes-tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 22px 0 16px; }
+.pendientes-tarjeta { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: center;
+  padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: #fff; text-align: left;
+  cursor: pointer; transition: border-color .18s var(--ease), box-shadow .18s var(--ease); }
+.pendientes-tarjeta:hover, .pendientes-tarjeta.on { border-color: var(--brand-blue); box-shadow: var(--shadow-card); }
+.pendientes-tarjeta i { grid-row: 1 / 3; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+  background: #eef2ff; color: var(--brand-blue); }
+.pendientes-tarjeta strong { font-size: 24px; line-height: 1; }
+.pendientes-tarjeta span { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #748096; font-weight: 800; }
+.pendientes-tarjeta.pendiente i { background: #fff0cf; color: #8b5d00; }
+.pendientes-tarjeta.aprobado i { background: #dcf6e7; color: #17764b; }
+.pendientes-tarjeta.por_corregir i { background: #ffe1e5; color: #ae2639; }
+.pendientes-tarjeta.revisar { cursor: default; }
+.pendientes-tarjeta.revisar i { background: #daf7fb; color: #147783; }
+
+.pendientes-filtros { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
+.pendientes-filtros button { border: 1px solid var(--line); background: #fff; border-radius: var(--r-full);
+  padding: 8px 14px; font-size: 12px; font-weight: 700; color: #52607b; cursor: pointer; }
+.pendientes-filtros button.on { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+
+.pendientes-lista { display: grid; gap: 9px; }
+.pendientes-lista article { display: grid; grid-template-columns: 140px 1fr auto auto; gap: 14px; align-items: center;
+  padding: 14px 16px; border: 1px solid var(--line); border-radius: 15px; background: #fff; }
+.pendientes-lista article.vencida { border-color: #f0b8c0; background: #fffafb; }
+.pendientes-datos b { display: block; font-size: 14px; }
+.pendientes-datos small { display: block; color: #7c8799; font-size: 11px; margin-top: 2px; }
+.pendientes-datos em { display: block; font-style: normal; font-size: 11px; color: #ae2639; margin-top: 5px; }
+
+.pendientes-estado { display: inline-flex; align-items: center; gap: 5px; width: max-content;
+  border-radius: var(--r-full); padding: 6px 10px; font-size: 9px; font-weight: 900;
+  text-transform: uppercase; letter-spacing: .05em; background: #edf0f5; color: #5e6b80; }
+.pendientes-estado.pendiente { background: #fff0cf; color: #8b5d00; }
+.pendientes-estado.revision { background: #daf7fb; color: #147783; }
+.pendientes-estado.aprobada { background: #dcf6e7; color: #17764b; }
+.pendientes-estado.rechazada { background: #ffe1e5; color: #ae2639; }
+.pendientes-estado.ajuste { background: #ffe9d1; color: #96521a; }
+
+.pendientes-plazo { font-size: 11px; color: #748096; white-space: nowrap; }
+.pendientes-plazo.roja { color: #c43a3a; font-weight: 800; }
+.pendientes-cargar { display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+  background: #e8edff; color: var(--brand-blue); border-radius: 10px; padding: 9px 13px; font-size: 12px; font-weight: 800; }
+.pendientes-cargar:hover { background: var(--brand-blue); color: #fff; }
+
+.pendientes-vacio { text-align: center; border: 1px dashed var(--line-2); border-radius: 18px; padding: 44px; color: #69758e; }
+.pendientes-vacio h3 { margin: 10px 0 4px; color: #26314b; }
+.pendientes-vacio p { margin: 0; }
+
+/* Tira de aviso sobre la consulta documental. */
+.pendientes-tira { display: flex; align-items: center; gap: 13px; width: 100%; text-align: left; cursor: pointer;
+  border: 1px solid #f0c98f; background: linear-gradient(120deg, #fff8ec, #fffdf8); border-radius: 16px;
+  padding: 14px 18px; margin-bottom: 18px; color: #6b4a12; }
+.pendientes-tira:hover { border-color: var(--brand-orange); }
+.pendientes-tira > span:nth-child(2) { flex: 1; }
+.pendientes-tira b { display: block; font-size: 14px; }
+.pendientes-tira small { display: block; font-size: 11px; color: #8a6a2c; margin-top: 2px; }
+.pendientes-tira-ico { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+  background: #fdecd0; color: #8b5d00; }
+
+/* El aviso con enlace se comporta como algo en lo que se puede entrar. */
+.alerts-drawer article.con-enlace:hover { background: #f6f8ff; }
+.alerts-drawer article.success i { background: #dcf6e7; color: #17764b; }
+.alerts-drawer article.info i { background: #e8edff; color: var(--brand-blue); }
+
+@media (max-width: 860px) {
+  .pendientes-lista article { grid-template-columns: 1fr auto; }
+  .pendientes-lista .pendientes-datos { grid-column: 1 / -1; order: -1; }
+}

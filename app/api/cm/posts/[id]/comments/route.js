@@ -1,4 +1,5 @@
-import { contextoCm, notificar, avisarMenciones } from "@/lib/cm/schema";
+import { contextoCm, avisarMenciones } from "@/lib/cm/schema";
+import { avisar } from "@/lib/notificaciones";
 import { guardarArchivo, FileError } from "@/lib/gc/files";
 
 export const dynamic = "force-dynamic";
@@ -86,10 +87,17 @@ export async function POST(req, { params }) {
       }
     }
 
-    await notificar(pool, { userId: post.author_id, actorId: me.id, topicId, titulo: `${me.full_name} comentó tu publicación`, mensaje: post.title });
+    const enlace = `/comunidad?post=${topicId}`;
+    await avisar(pool, {
+      para: post.author_id, actorId: me.id, tipo: "forum", entidadId: topicId,
+      titulo: `${me.full_name} comentó tu publicación`, mensaje: post.title, link: enlace,
+    });
     if (parentId) {
       const [[padre]] = await pool.query("SELECT author_id FROM forum_comments WHERE id=?", [parentId]);
-      if (padre) await notificar(pool, { userId: padre.author_id, actorId: me.id, topicId, titulo: `${me.full_name} respondió tu comentario`, mensaje: post.title });
+      if (padre) await avisar(pool, {
+        para: padre.author_id, actorId: me.id, tipo: "forum", entidadId: topicId,
+        titulo: `${me.full_name} respondió tu comentario`, mensaje: post.title, link: enlace,
+      });
     }
     await avisarMenciones(pool, me, body, topicId, post.title);
 
