@@ -113,6 +113,22 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
     return () => { vigente = false; };
   }, [contratoId]);
 
+  // Con el contrato abierto se adelantan los datos del resto de pestañas en
+  // segundo plano: al pulsarlas ya están en caché y se pintan sin esperar.
+  useEffect(() => {
+    if (!contratoId) return;
+    const hoy = new Date();
+    const base = `/api/gc/contracts/${contratoId}`;
+    const tardar = setTimeout(() => {
+      for (const ruta of [
+        "/documents", "/folders", "/participants", "/requests", "/history",
+        "/evidences?todo=1",
+        `/activities?todo=1&year=${hoy.getFullYear()}&month=${hoy.getMonth() + 1}`,
+      ]) precargar(base + ruta);
+    }, 250); // se deja pasar el primer render para no competir con él
+    return () => clearTimeout(tardar);
+  }, [contratoId]);
+
   const puede = useCallback((permiso) => !!detalle?.permisos?.includes(permiso), [detalle]);
   const esAdmin = ctx?.me?.isAdmin;
 
