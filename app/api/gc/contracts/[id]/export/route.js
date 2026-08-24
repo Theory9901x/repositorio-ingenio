@@ -374,6 +374,97 @@ export async function GET(req, { params }) {
     return `Registro cronológico de la gestión según el filtro aplicado (${filas.length} acción(es)).`;
   }
 
+  /* ================= Por usuario ================= */
+  // Toda la gestión del contrato discriminada persona por persona: cada
+  // participante aparece con sus métricas y el detalle de lo suyo.
+  async function armarPorUsuario() {
+    let [equipo] = await pool.query(
+      `SELECT cu.user_id, cu.role_in_contract, cu.specialty, cu.status, u.full_name, u.cargo
+         FROM contract_users cu JOIN users u ON u.id=cu.user_id
+        WHERE cu.contract_id=? ORDER BY cu.role_in_contract='supervisor' DESC, u.full_name`,
+      [contractId]
+    );
+    // Con filtro de persona (o siendo trabajador) solo va esa persona.
+    if (userId) equipo = equipo.filter((p) => Number(p.user_id) === Number(userId));
+
+    doc.metricas.push({ etiqueta: "Personas incluidas", valor: equipo.length });
+
+    for (const p of equipo) {
+      const uid = p.user_id;
+      const [entregas] = await pool.query(
+        `SELECT r.name AS request_name, s.status, s.file_name, DATE_FORMAT(s.created_at,'%Y-%m-%d') created_at
+           FROM contract_document_submissions s JOIN contract_document_requests r ON r.id=s.request_id
+          WHERE s.contract_id=? AND s.user_id=? ORDER BY s.created_at DESC`, [contractId, uid]
+      );
+      const [acts] = await pool.query(
+        `SELECT title, category, status, DATE_FORMAT(activity_date,'%Y-%m-%d') activity_date,
+                (SELECT COUNT(*) FROM contract_activity_files f WHERE f.activity_id=contract_activities.id) AS anexos
+           FROM contract_activities WHERE contract_id=? AND user_id=? ORDER BY activity_date DESC`, [contractId, uid]
+      );
+      const [evs] = await pool.query(
+        `SELECT er.name, ev.period, ev.status, ev.file_name, DATE_FORMAT(ev.uploaded_at,'%Y-%m-%d') uploaded_at
+           FROM contract_evidences ev JOIN contract_evidence_requirements er ON er.id=ev.requirement_id
+          WHERE ev.contract_id=? AND ev.user_id=? ORDER BY ev.uploaded_at DESC`, [contractId, uid]
+      );
+      const [mesas] = await pool.query(
+        `SELECT m.title, m.location, DATE_FORMAT(m.meeting_date,'%Y-%m-%d') meeting_date,
+                SUM(f.kind='acta') AS actas, SUM(f.kind='asistencia') AS asistencias,
+                SUM(f.kind='foto') AS fotos, SUM(f.kind='anexo') AS anexos
+           FROM contract_meetings m LEFT JOIN contract_meeting_files f ON f.meeting_id=m.id
+          WHERE m.contract_id=? AND m.user_id=? GROUP BY m.id ORDER BY m.meeting_date DESC`, [contractId, uid]
+      );
+      const [[plan]] = await pool.query(
+        "SELECT file_name, DATE_FORMAT(created_at,'%Y-%m-%d') created_at FROM contract_workplans WHERE contract_id=? AND user_id=?",
+        [contractId, uid]
+      );
+
+      const aprobadas = acts.filter((a) => a.status === "approved").length;
+      const validadas = evs.filter((e) => e.status === "validada").length;
+
+      // Ficha resumen de la persona.
+      doc.secciones.push({
+        titulo: `${p.full_name} — ${p.role_in_contract || "Contratista"}`,
+        bloques: [{
+          titulo: "Resumen de su gestión",
+          meta: `${p.specialty || p.cargo || "Sin especialidad"} · estado ${p.status || "activo"}`,
+          parrafos: [
+            ["Cronograma de trabajo", plan ? `${plan.file_name} (cargado el ${fmt(plan.created_at)})` : "Sin cargar"],
+            ["Balance", `${entregas.length} entrega(s) de documentos · ${acts.length} actividad(es), ${aprobadas} aprobada(s) · ${evs.length} evidencia(s), ${validadas} validada(s) · ${mesas.length} mesa(s) de trabajo`],
+          ],
+        }],
+      });
+
+      if (entregas.length) doc.secciones.push({
+        titulo: `Entregas de documentos · ${p.full_name}`,
+        columnas: [{ t: "Solicitud" }, { t: "Archivo", w: 130 }, { t: "Fecha", w: 60 }, { t: "Estado", w: 74 }],
+        filas: entregas.map((e) => [{ t: e.request_name, negrita: true }, e.file_name || "—", fmt(e.created_at), { estado: e.status }]),
+      });
+      if (acts.length) doc.secciones.push({
+        titulo: `Actividades · ${p.full_name}`,
+        columnas: [{ t: "Fecha", w: 60 }, { t: "Actividad" }, { t: "Categoría", w: 85 }, { t: "Estado", w: 74 }, { t: "Anexos", w: 42, alineacion: "right" }],
+        filas: acts.map((a) => [fmt(a.activity_date), { t: a.title, negrita: true }, a.category || "—", { estado: a.status }, String(a.anexos)]),
+      });
+      if (evs.length) doc.secciones.push({
+        titulo: `Evidencias · ${p.full_name}`,
+        columnas: [{ t: "Requisito" }, { t: "Periodo", w: 52 }, { t: "Archivo", w: 120 }, { t: "Fecha", w: 60 }, { t: "Estado", w: 74 }],
+        filas: evs.map((e) => [{ t: e.name, negrita: true }, e.period || "Única", e.file_name || "—", fmt(e.uploaded_at), { estado: e.status }]),
+      });
+      if (mesas.length) doc.secciones.push({
+        titulo: `Mesas de trabajo · ${p.full_name}`,
+        columnas: [{ t: "Fecha", w: 60 }, { t: "Tema" }, { t: "Lugar", w: 90 }, { t: "Acta", w: 40 }, { t: "Asist.", w: 40 }, { t: "Fotos", w: 40, alineacion: "right" }],
+        filas: mesas.map((m) => [
+          fmt(m.meeting_date), { t: m.title, negrita: true }, m.location || "—",
+          { t: Number(m.actas) ? "Sí" : "No", negrita: true, color: Number(m.actas) ? [21, 169, 122] : [226, 68, 95] },
+          { t: Number(m.asistencias) ? "Sí" : "No", negrita: true, color: Number(m.asistencias) ? [21, 169, 122] : [226, 68, 95] },
+          String(Number(m.fotos) || 0),
+        ]),
+      });
+    }
+    return userId
+      ? `Gestión completa de ${equipo[0]?.full_name || "la persona"} en el contrato.`
+      : `Toda la gestión del contrato discriminada por persona (${equipo.length} participante(s)).`;
+  }
+
   /* ================= Armado ================= */
   const ARMADORES = {
     documentos: ["Informe de documentos", armarDocumentos],
@@ -383,6 +474,7 @@ export async function GET(req, { params }) {
     reuniones: ["Informe de reuniones", armarReuniones],
     contratistas: ["Informe del equipo del contrato", armarContratistas],
     historial: ["Informe de trazabilidad", armarHistorial],
+    "por-usuario": ["Informe de gestión por usuario", armarPorUsuario],
   };
 
   try {
@@ -394,7 +486,8 @@ export async function GET(req, { params }) {
         if (clave === "historial" && rol === ROL.TRABAJADOR) continue;
         partes.push(await armar());
       }
-      doc.subtitulo = "Consolidado de toda la gestión registrada en el contrato: expediente, solicitudes, actividades, evidencias, reuniones, equipo y trazabilidad.";
+      await armarPorUsuario();
+      doc.subtitulo = "Consolidado de toda la gestión registrada en el contrato: expediente, solicitudes, actividades, evidencias, reuniones, equipo, trazabilidad y el detalle discriminado por persona.";
     } else if (ARMADORES[seccion]) {
       const [tituloSeccion, armar] = ARMADORES[seccion];
       doc.titulo = tituloSeccion;

@@ -155,7 +155,7 @@ export default function TabMesas({ contratoId, detalle, avisar, setVisor }) {
           <div className="gc-card-title" style={{ margin: 0 }}>
             <h3>Mesas de trabajo · {nombrePersona}</h3>
             <div className="gc-actions">
-              <BotonExportar contratoId={contratoId} seccion="reuniones" filtros={{ userId: quien }} />
+              <BotonExportar contratoId={contratoId} seccion="por-usuario" filtros={{ userId: quien }} etiqueta="Informe de la persona" />
               <button className="gc-btn ghost" onClick={() => setPersona(null)}><Users size={15} /> Cambiar persona</button>
             </div>
           </div>

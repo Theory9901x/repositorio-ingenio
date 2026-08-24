@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ClipboardList, Copy, ShieldCheck, UserMinus, UserPlus, Users } from "lucide-react";
+import { ClipboardList, Copy, FileDown, ShieldCheck, UserMinus, UserPlus, Users } from "lucide-react";
 import { api, enviarJson } from "./api";
 import { invalidar, useDatos } from "./cache";
 import { BotonExportar, Cargando, Confirmar, Drawer, Vacio, fmtFecha, iniciales } from "./ui";
@@ -106,7 +106,8 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
         <header className="gc-card-title" style={{ padding: "16px 18px 0", margin: 0 }}>
           <h3>Participantes del contrato</h3>
           <div className="gc-actions">
-            <BotonExportar contratoId={contratoId} seccion="contratistas" />
+            <BotonExportar contratoId={contratoId} seccion="contratistas" etiqueta="Equipo PDF" />
+            <BotonExportar contratoId={contratoId} seccion="por-usuario" etiqueta="PDF por usuario" />
             {esAdmin && (
               <>
                 <button className="gc-btn ghost" onClick={abrirDirectorio}>
@@ -148,6 +149,10 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
                 <span className="gc-cell">{p.actividades}</span>
                 <span className="gc-cell">{p.evidencias_validadas} validadas</span>
                 <div className="gc-rowact">
+                  <a className="gc-icbtn" title="Informe PDF de esta persona"
+                    href={`/api/gc/contracts/${contratoId}/export?seccion=por-usuario&userId=${p.user_id}`}>
+                    <FileDown size={14} />
+                  </a>
                   <button className="gc-icbtn" title="Ver actividades" onClick={() => ir("contrato", contratoId, "actividades", p.user_id)}><ClipboardList size={14} /></button>
                   <button className="gc-icbtn" title="Ver evidencias" onClick={() => ir("contrato", contratoId, "evidencias", p.user_id)}><ShieldCheck size={14} /></button>
                   {puedeGestionar && <button className="gc-icbtn danger" title="Retirar" onClick={() => setConfirmar(p)}><UserMinus size={14} /></button>}
