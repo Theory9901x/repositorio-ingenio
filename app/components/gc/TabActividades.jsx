@@ -120,7 +120,7 @@ export default function TabActividades({ contratoId, detalle, avisar, setVisor, 
     setGuardando(true);
     try {
       await enviarJson(`/api/gc/contracts/${contratoId}/reports`, "POST", { year, month, user_id: userId });
-      avisar("Informe generado a partir de las actividades del periodo");
+      avisar("Informe en PDF generado a partir de las actividades del periodo");
       cargar();
     } catch (e) { avisar(e.message, "error"); } finally { setGuardando(false); }
   }
@@ -314,7 +314,7 @@ export default function TabActividades({ contratoId, detalle, avisar, setVisor, 
                 {propioInforme && (!informe || ["borrador", "requiere_ajustes", "rechazado"].includes(informe.status)) && (
                   <>
                     <button className="gc-btn soft" style={{ justifyContent: "center" }} disabled={guardando || !datos.actividades.length} onClick={generarInforme}>
-                      <FileText size={14} /> {informe ? "Regenerar desde actividades" : "Generar informe"}
+                      <FileText size={14} /> {informe ? "Regenerar PDF" : "Generar informe en PDF"}
                     </button>
                     <label className="gc-btn ghost" style={{ justifyContent: "center", cursor: "pointer" }}>
                       <Upload size={14} /> Cargar informe

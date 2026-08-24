@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Bell, Briefcase, Building2, CalendarClock, ChevronRight, ClipboardList,
   FileText, FolderOpen, Home, Inbox, Layers, Plus, Search, Settings, ShieldCheck,
@@ -29,8 +28,12 @@ const TABS = [
 
 const ETIQUETA_ROL = { ADMIN: "Administrador", SUPERVISOR: "Supervisor", TRABAJADOR: "Contratista" };
 
-export default function GestionContractual({ ruta = [] }) {
-  const router = useRouter();
+export default function GestionContractual({ ruta: rutaInicial = [] }) {
+  // La navegación interna se resuelve en cliente: cambiar de pestaña o de
+  // contrato no debe provocar una recarga de la página. La URL se mantiene
+  // sincronizada con history para que siga siendo compartible y el botón
+  // «atrás» del navegador funcione.
+  const [ruta, setRuta] = useState(() => rutaInicial.map(String));
   const [ctx, setCtx] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -59,7 +62,25 @@ export default function GestionContractual({ ruta = [] }) {
     setTimeout(() => setToast(null), tipo === "error" ? 5000 : 2800);
   }, []);
 
-  const ir = useCallback((...partes) => router.push("/gestion-contractual" + (partes.length ? "/" + partes.join("/") : "")), [router]);
+  const navegar = useCallback((partes, reemplazar = false) => {
+    const limpias = partes.filter((p) => p !== null && p !== undefined && p !== "").map(String);
+    const url = "/gestion-contractual" + (limpias.length ? "/" + limpias.join("/") : "");
+    if (typeof window !== "undefined" && window.location.pathname !== url) {
+      window.history[reemplazar ? "replaceState" : "pushState"]({}, "", url);
+    }
+    setRuta(limpias);
+  }, []);
+  const ir = useCallback((...partes) => navegar(partes), [navegar]);
+
+  // El botón «atrás» del navegador vuelve al nivel anterior sin recargar.
+  useEffect(() => {
+    const alVolver = () => {
+      const partes = window.location.pathname.replace(/^\/gestion-contractual\/?/, "").split("/").filter(Boolean);
+      setRuta(partes.map(decodeURIComponent));
+    };
+    window.addEventListener("popstate", alVolver);
+    return () => window.removeEventListener("popstate", alVolver);
+  }, []);
 
   const cargarContexto = useCallback(async () => {
     try {
@@ -423,10 +444,11 @@ export default function GestionContractual({ ruta = [] }) {
 
                 {tab === "resumen" && <TabResumen detalle={detalle} avisar={avisar} ir={ir} />}
                 {tab === "documentos" && <TabDocumentos contratoId={contrato.id} detalle={detalle} avisar={avisar} setVisor={setVisor} />}
-                {tab === "evidencias" && <TabEvidencias contratoId={contrato.id} detalle={detalle} avisar={avisar} setVisor={setVisor} ruta={[param2]} ir={(u) => ir("contrato", contrato.id, "evidencias", u ?? "")} />}
+                {tab === "evidencias" && <TabEvidencias contratoId={contrato.id} detalle={detalle} avisar={avisar} setVisor={setVisor} ruta={[param2]}
+                  ir={(u) => navegar(["contrato", contrato.id, "evidencias", u], true)} />}
                 {tab === "actividades" && <TabActividades contratoId={contrato.id} detalle={detalle} avisar={avisar} setVisor={setVisor}
                   seleccion={{ userId: param2 ? Number(param2) : null, year: param3 ? Number(param3) : null, month: param4 ? Number(param4) : null }}
-                  ir={(u, y, m) => ir("contrato", contrato.id, "actividades", ...[u, y, m].filter((x) => x != null))} />}
+                  ir={(u, y, m) => navegar(["contrato", contrato.id, "actividades", u, y, m], true)} />}
                 {tab === "contratistas" && <TabContratistas contratoId={contrato.id} detalle={detalle} avisar={avisar} ir={ir} />}
                 {tab === "solicitudes" && <TabSolicitudes contratoId={contrato.id} detalle={detalle} avisar={avisar} setVisor={setVisor} />}
                 {tab === "historial" && <TabHistorial contratoId={contrato.id} detalle={detalle} />}

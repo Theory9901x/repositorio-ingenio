@@ -1,5 +1,6 @@
 import { contexto, auditar, esPropio, ROL } from "@/lib/gc/rbac";
-import { guardarArchivo, borrarArchivo, FileError } from "@/lib/gc/files";
+import { guardarArchivo, guardarBuffer, borrarArchivo, FileError } from "@/lib/gc/files";
+import { generarInformeActividades } from "@/lib/gc/informe";
 
 export const dynamic = "force-dynamic";
 
@@ -96,7 +97,49 @@ export async function POST(req, { params }) {
     if (!esArchivo && !resumen.total) {
       return Response.json({ error: "No hay actividades registradas en este periodo para generar el informe" }, { status: 400 });
     }
-    if (!esArchivo) generado = JSON.stringify(resumen);
+
+    // Sin archivo adjunto, el sistema construye el informe en PDF a partir
+    // de las actividades y sus soportes.
+    if (!esArchivo) {
+      generado = JSON.stringify(resumen);
+      const [[contrato]] = await pool.query(
+        `SELECT c.title, c.code, c.entity_name, emp.name AS company_name, u.full_name AS responsible_name
+           FROM contract_routes c
+           LEFT JOIN contract_companies emp ON emp.id=c.company_id
+           LEFT JOIN users u ON u.id=c.internal_responsible_id
+          WHERE c.id=?`,
+        [contractId]
+      );
+      const [[contratista]] = await pool.query(
+        `SELECT u.full_name, u.cargo, cu.role_in_contract, cu.specialty
+           FROM users u LEFT JOIN contract_users cu ON cu.user_id=u.id AND cu.contract_id=?
+          WHERE u.id=?`,
+        [contractId, userId]
+      );
+      const [anexos] = await pool.query(
+        `SELECT f.activity_id, f.file_name, f.size_bytes
+           FROM contract_activity_files f
+           JOIN contract_activities a ON a.id=f.activity_id
+          WHERE a.contract_id=? AND a.user_id=?
+            AND YEAR(COALESCE(a.activity_date,a.created_at))=? AND MONTH(COALESCE(a.activity_date,a.created_at))=?
+          ORDER BY f.created_at`,
+        [contractId, userId, year, month]
+      );
+      const anexosPorActividad = {};
+      for (const a of anexos) (anexosPorActividad[a.activity_id] ||= []).push(a);
+
+      const pdf = generarInformeActividades({
+        contrato: contrato || { title: "Contrato" },
+        contratista: contratista || { full_name: "Contratista" },
+        year, month,
+        actividades: resumen.actividades,
+        anexosPorActividad,
+        generadoPor: me.full_name,
+        generadoEn: new Date().toLocaleString("es-CO", { dateStyle: "long", timeStyle: "short" }),
+      });
+      const nombre = `Informe_actividades_${String(month).padStart(2, "0")}-${year}_${(contratista?.full_name || "contratista").replace(/\s+/g, "_")}.pdf`;
+      archivo = await guardarBuffer(pdf, `informes/${contractId}`, nombre, "application/pdf", me.id);
+    }
 
     const [[previo]] = await pool.query(
       "SELECT * FROM contract_monthly_reports WHERE contract_id=? AND user_id=? AND year=? AND month=?",
