@@ -112,7 +112,7 @@ export default function DashboardApp() {
   if (user === undefined) return <div className="loading"><span className="loader" /> Cargando Grupo Ingenio…</div>;
   if (!user) return <AuthScreen onAuthenticated={async () => { const me = await loadUser(); if (me) await loadAll(); }} />;
 
-  function navigate(next) { if (next === "workspace") { location.href = "/workspace"; return; } if (next === "contracts") { location.href = "/gestion-contractual"; return; } setSection(next); setSelectedProcess(null); setDetail(null); }
+  function navigate(next) { if (next === "workspace") { location.href = "/workspace"; return; } if (next === "contracts") { location.href = "/gestion-contractual"; return; } if (next === "community") { location.href = "/comunidad"; return; } setSection(next); setSelectedProcess(null); setDetail(null); }
   async function logout() { await fetch("/api/auth/logout", { method: "POST" }); setUser(null); setDocs([]); }
 
   const navItems = [
