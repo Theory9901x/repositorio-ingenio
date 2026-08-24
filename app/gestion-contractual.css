@@ -191,8 +191,10 @@
 .gc-trow.click:hover{background:linear-gradient(95deg,rgba(74,103,255,.05),rgba(123,92,250,.05))}
 .gc-trow.on{background:linear-gradient(95deg,rgba(74,103,255,.1),rgba(123,92,250,.08))}
 .gc-cell-main{display:flex;align-items:center;gap:11px;min-width:0}
+.gc-cell-main>div{flex:1;min-width:0}
 .gc-cell-main b{display:block;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gc-cell-main small{display:block;font-size:10.5px;color:var(--gc-muted);font-weight:700;margin-top:1px}
+.gc-cell-main small{display:block;font-size:10.5px;color:var(--gc-muted);font-weight:700;margin-top:1px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gc-cell{font-size:12px;font-weight:600;color:var(--gc-soft);min-width:0;overflow:hidden;text-overflow:ellipsis}
 .gc-rowact{display:flex;align-items:center;justify-content:flex-end;gap:5px}
 .gc-fico{width:34px;height:34px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff}

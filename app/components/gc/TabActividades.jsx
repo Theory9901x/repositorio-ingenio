@@ -10,7 +10,7 @@ import {
   fmtFecha, fmtFechaHora, fmtTam, iniciales,
 } from "./ui";
 
-const COLUMNAS = "minmax(0,1fr) 110px 130px 110px 110px";
+const COLUMNAS = "minmax(0,1.6fr) 100px 110px 108px 76px";
 const hoy = new Date();
 
 // Contrato → contratista → periodo → actividad → anexos.

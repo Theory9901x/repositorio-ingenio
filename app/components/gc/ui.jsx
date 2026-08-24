@@ -12,15 +12,19 @@ export const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Ju
 
 export function fmtFecha(s) {
   if (!s) return "—";
+  // Una fecha sin hora se interpreta en UTC y se desplazaría un día al
+  // mostrarla en la zona local, así que se formatea tal cual viene.
+  const soloFecha = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (soloFecha) return `${soloFecha[3]}/${soloFecha[2]}/${soloFecha[1]}`;
   const d = new Date(String(s).replace(" ", "T"));
   if (isNaN(d)) return s;
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 export function fmtFechaHora(s) {
   if (!s) return "—";
-  const d = new Date(String(s).replace(" ", "T"));
-  if (isNaN(d)) return s;
-  return `${fmtFecha(s)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const conHora = String(s).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  if (conHora) return `${conHora[3]}/${conHora[2]}/${conHora[1]} ${conHora[4]}:${conHora[5]}`;
+  return fmtFecha(s);
 }
 export function fmtTam(b) {
   if (!b) return "—";
