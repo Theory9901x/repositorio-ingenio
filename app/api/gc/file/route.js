@@ -12,6 +12,7 @@ const ORIGENES = {
   evidencia: { tabla: "contract_evidences", propietario: "user_id" },
   informe: { tabla: "contract_monthly_reports", propietario: "user_id" },
   entrega: { tabla: "contract_document_submissions", propietario: "user_id" },
+  reunion: { tabla: "contract_meeting_files", propietario: "uploaded_by" },
 };
 
 export async function GET(req) {
@@ -39,7 +40,8 @@ export async function GET(req) {
   // El trabajador solo accede a lo suyo y a los documentos generales.
   if (ctx.rol === ROL.TRABAJADOR) {
     const propio = Number(registro.propietario) === Number(ctx.me.id);
-    const general = tipo === "documento" && !registro.propietario;
+    // Las actas y asistencias de reunión son comunes a todo el contrato.
+    const general = (tipo === "documento" && !registro.propietario) || tipo === "reunion";
     if (!propio && !general) return Response.json({ error: "No tienes acceso a este archivo" }, { status: 403 });
   }
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft, Bell, Briefcase, Building2, CalendarClock, ChevronRight, ClipboardList,
+  ArrowLeft, Bell, Briefcase, Building2, CalendarClock, CalendarDays, ChevronRight, ClipboardList,
   FileText, FolderOpen, Home, Inbox, Layers, Plus, Search, Settings, ShieldCheck,
   Trash2, Users,
 } from "lucide-react";
@@ -15,6 +15,7 @@ import TabDocumentos from "./TabDocumentos";
 import TabActividades from "./TabActividades";
 import TabEvidencias from "./TabEvidencias";
 import TabContratistas from "./TabContratistas";
+import TabReuniones from "./TabReuniones";
 import TabSolicitudes from "./TabSolicitudes";
 import TabHistorial from "./TabHistorial";
 
@@ -24,6 +25,7 @@ const TABS = [
   { id: "evidencias", label: "Evidencias", icon: ShieldCheck },
   { id: "actividades", label: "Actividades", icon: ClipboardList },
   { id: "contratistas", label: "Contratistas", icon: Users, ocultarTrabajador: true },
+  { id: "reuniones", label: "Reuniones", icon: CalendarDays },
   { id: "solicitudes", label: "Solicitudes", icon: Inbox },
   { id: "historial", label: "Historial", icon: CalendarClock },
 ];
@@ -128,7 +130,7 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
     const base = `/api/gc/contracts/${contratoId}`;
     const tardar = setTimeout(() => {
       for (const ruta of [
-        "/documents", "/folders", "/participants", "/requests", "/history",
+        "/documents", "/folders", "/participants", "/requests", "/history", "/meetings",
         "/evidences?todo=1",
         `/activities?todo=1&year=${hoy.getFullYear()}&month=${hoy.getMonth() + 1}`,
       ]) precargar(base + ruta);
@@ -482,6 +484,7 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
                   seleccion={{ userId: param2 ? Number(param2) : null, year: param3 ? Number(param3) : null, month: param4 ? Number(param4) : null }}
                   ir={(u, y, m) => navegar(["contrato", contrato.id, "actividades", u, y, m], true)} />}
                 {tab === "contratistas" && <TabContratistas contratoId={contrato.id} detalle={detalle} avisar={avisar} ir={ir} />}
+                {tab === "reuniones" && <TabReuniones contratoId={contrato.id} detalle={detalle} avisar={avisar} setVisor={setVisor} />}
                 {tab === "solicitudes" && <TabSolicitudes contratoId={contrato.id} detalle={detalle} avisar={avisar} setVisor={setVisor} />}
                 {tab === "historial" && <TabHistorial contratoId={contrato.id} detalle={detalle} />}
               </>

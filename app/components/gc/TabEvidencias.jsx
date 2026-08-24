@@ -140,11 +140,6 @@ export default function TabEvidencias({ contratoId, detalle, avisar, setVisor, r
                 </button>
               ))}
             </div>
-            {puedeConfigurar && (
-              <button className="gc-btn ghost" style={{ width: "100%", marginTop: 12, justifyContent: "center" }} onClick={abrirRequisitos}>
-                <ListChecks size={15} /> Configurar requisitos
-              </button>
-            )}
           </section>
         )}
 
@@ -175,6 +170,11 @@ export default function TabEvidencias({ contratoId, detalle, avisar, setVisor, r
                         {persona?.specialty || persona?.cargo || "Contratista"} · {datos.resumen.validadas} de {datos.resumen.total} evidencias validadas
                       </p>
                     </div>
+                    {puedeConfigurar && (
+                      <button className="gc-btn primary" onClick={abrirRequisitos}>
+                        <Plus size={15} /> Crear requisito
+                      </button>
+                    )}
                     <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
                       <Chip valor={datos.resumen.requeridas} etiqueta="Requeridas" />
                       <Chip valor={datos.resumen.cargadas} etiqueta="Cargadas" tono="info" />
@@ -188,7 +188,7 @@ export default function TabEvidencias({ contratoId, detalle, avisar, setVisor, r
                 <section className="gc-card flush">
                   <header className="gc-card-title" style={{ padding: "16px 18px 0", margin: 0 }}>
                     <h3>Checklist de evidencias</h3>
-                    {puedeConfigurar && <button className="gc-btn ghost" onClick={abrirRequisitos}><ListChecks size={15} /> Requisitos</button>}
+                    {puedeConfigurar && <button className="gc-btn ghost" onClick={abrirRequisitos}><ListChecks size={15} /> Configurar requisitos</button>}
                   </header>
                   <div className="gc-table" style={{ marginTop: 14 }}>
                     <div className="gc-thead" style={{ gridTemplateColumns: COLUMNAS }}>
