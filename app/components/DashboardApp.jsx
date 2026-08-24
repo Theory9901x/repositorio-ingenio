@@ -6,7 +6,7 @@ import {
   Archive, ArrowRight, BarChart3, BriefcaseBusiness, FileSearch, FileText, ScanSearch,
   Grid2X2, LogOut, Map, MessageCircle, Search, Settings, ShieldCheck, UserRound, X,
   Mail, Lock, IdCard, Sparkles, CheckCircle2, Paperclip, FolderSearch,
-  Eye, EyeOff, Workflow, Users, FileCheck2, ClipboardList,
+  Eye, EyeOff, Workflow, Users, FileCheck2, ClipboardList, Menu,
 } from "lucide-react";
 import AdminDocumentPanel from "./AdminDocumentPanel";
 import ContractRoutesPanel from "./ContractRoutesPanel";
@@ -53,6 +53,7 @@ export default function DashboardApp() {
   const [mapFailed, setMapFailed] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [dataError, setDataError] = useState("");
+  const [menuAbierto, setMenuAbierto] = useState(false); // cajón lateral en móvil
 
   const loadUser = useCallback(async () => {
     const response = await fetch("/api/auth/me", { cache: "no-store" });
@@ -130,6 +131,7 @@ export default function DashboardApp() {
     const ruta = RUTAS_MODULO[next];
     if (ruta) { router.push(ruta); return; }
     setSection(next); setSelectedProcess(null); setDetail(null);
+    setMenuAbierto(false);
   }
   async function logout() { await fetch("/api/auth/logout", { method: "POST" }); setUser(null); setDocs([]); }
 
@@ -148,14 +150,15 @@ export default function DashboardApp() {
   ];
 
   return <div className="shell">
-    <aside className="sidebar">
+    {menuAbierto && <div className="movil-tapa" onClick={() => setMenuAbierto(false)} />}
+    <aside className={`sidebar${menuAbierto ? " abierto" : ""}`}>
       <div className="side-brand"><img src="/branding/logo-grupo-ingenio.png" alt="Grupo Ingenio" /><div><h1>Grupo Ingenio</h1><p>Gestión documental</p></div></div>
       <nav className="side-nav" aria-label="Navegación principal">{navItems.map(([id, Icon, label]) => <button key={id} className={section === id ? "active" : ""} onClick={() => navigate(id)}><Icon size={18} /> {label}</button>)}</nav>
       <div className="side-block"><span className="side-label">Repositorio institucional</span><div className="soon"><FileText size={16} /> {docs.length} documentos</div><div className="soon"><ShieldCheck size={16} /> Acceso seguro</div></div>
       <div className="user-card">{user.hasPhoto ? <img className="avatar user-avatar-photo" src={`/api/profile/photo/${user.id}`} alt="Foto de perfil" /> : <div className="avatar">{(user.full_name || user.email || "U").charAt(0).toUpperCase()}</div>}<div className="user-meta"><strong>{user.full_name || user.email}</strong><span>{user.cargo || "Usuario"}</span>{user.isAdmin && <em><ShieldCheck size={11} /> Administrador</em>}</div></div>
     </aside>
     <main className="main">
-      <header className="topbar"><div className="top-title"><span className="eyebrow mini">Repositorio Ingenio</span><strong>{selectedProcess ? selectedProcess.name : SECTION_TITLES[section]}</strong></div><div className="top-actions"><AlertsCenter/><button className="chip-btn" onClick={loadAll} disabled={loadingData}>Actualizar</button><button className="chip-btn danger-lite" onClick={logout}><LogOut size={16} /> Salir</button></div></header>
+      <header className="topbar"><button className="movil-menu" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú"><Menu size={19} /></button><div className="top-title"><span className="eyebrow mini">Repositorio Ingenio</span><strong>{selectedProcess ? selectedProcess.name : SECTION_TITLES[section]}</strong></div><div className="top-actions"><AlertsCenter/><button className="chip-btn" onClick={loadAll} disabled={loadingData}>Actualizar</button><button className="chip-btn danger-lite" onClick={logout}><LogOut size={16} /> Salir</button></div></header>
       <div className="wrap dashboard-wrap">
         {dataError && <div className="error-banner">{dataError}<button onClick={loadAll}>Reintentar</button></div>}
         {section === "consultation" && !selectedProcess && <MisPendientes compacto onVerTodo={() => navigate("pendientes")} />}

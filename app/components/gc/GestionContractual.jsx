@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft, Bell, Briefcase, Building2, CalendarClock, CalendarDays, ChevronRight, ClipboardList,
+  ArrowLeft, Bell, Briefcase, Building2, CalendarClock, CalendarDays, Menu, ChevronRight, ClipboardList,
   FileText, FolderOpen, Home, Inbox, Layers, Plus, Search, Settings, ShieldCheck,
   Trash2, Users,
 } from "lucide-react";
@@ -45,6 +45,7 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
   const [toast, setToast] = useState(null);
   const [visor, setVisor] = useState(null);
   const [busqueda, setBusqueda] = useState("");
+  const [menuAbierto, setMenuAbierto] = useState(false); // cajón lateral en móvil
 
   // Estado del contrato abierto
   const [detalle, setDetalle] = useState(null);
@@ -74,6 +75,7 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
       window.history[reemplazar ? "replaceState" : "pushState"]({}, "", url);
     }
     setRuta(limpias);
+    setMenuAbierto(false);
   }, []);
   const ir = useCallback((...partes) => navegar(partes), [navegar]);
 
@@ -219,7 +221,8 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
   return (
     <div className="gc">
       {/* ============ Sidebar global ============ */}
-      <aside className="gc-side">
+      {menuAbierto && <div className="movil-tapa" onClick={() => setMenuAbierto(false)} />}
+      <aside className={`gc-side${menuAbierto ? " abierto" : ""}`}>
         <div className="gc-brand">
           <span className="gc-brand-mark"><img src="/branding/logo-grupo-ingenio.png" alt="Grupo Ingenio" /></span>
           <div>
@@ -258,6 +261,7 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
       {/* ============ Contenido ============ */}
       <div className="gc-main">
         <header className="gc-top">
+          <button className="movil-menu" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú"><Menu size={19} /></button>
           <nav className="gc-crumb">
             <button onClick={() => ir()}><Home size={13} /> Gestión contractual</button>
             {empresa && (<><span className="sep"><ChevronRight size={12} /></span><span className="here">{empresa.name}</span></>)}

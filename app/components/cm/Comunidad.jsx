@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  AlertCircle, ArrowLeft, Bell, BookMarked, Bookmark, Check, ChevronRight, Clock,
+  AlertCircle, ArrowLeft, Bell, BookMarked, Bookmark, Check, ChevronRight, Clock, Menu,
   FileText, Flame, FolderOpen, Hash, Heart, Home, Layers, Lightbulb, Lock, MessageCircle,
   MessageSquare, Paperclip, Pin, Plus, Search, Send, Sparkles, Trash2, Users, X,
 } from "lucide-react";
@@ -70,6 +70,7 @@ export default function Comunidad() {
   const [abierta, setAbierta] = useState(null);
   const [crear, setCrear] = useState(null);
   const [directorio, setDirectorio] = useState(false);
+  const [menuAbierto, setMenuAbierto] = useState(false); // cajón lateral en móvil
   const [menu, setMenu] = useState(null);
   const buscador = useRef(null);
 
@@ -204,7 +205,8 @@ export default function Comunidad() {
   return (
     <div className="cm">
       {/* Sidebar global */}
-      <aside className="cm-side">
+      {menuAbierto && <div className="movil-tapa" onClick={() => setMenuAbierto(false)} />}
+      <aside className={`cm-side${menuAbierto ? " abierto" : ""}`}>
         <div className="cm-brand">
           <span className="cm-brand-mark"><img src="/branding/logo-grupo-ingenio.png" alt="Grupo Ingenio" /></span>
           <div><h1>Grupo Ingenio</h1><p>Gestión documental</p></div>
@@ -226,6 +228,7 @@ export default function Comunidad() {
 
       <div className="cm-main">
         <header className="cm-top">
+          <button className="movil-menu" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú"><Menu size={19} /></button>
           <div className="cm-search">
             <Search size={15} />
             <input ref={buscador} value={busqueda} onChange={(e) => setBusqueda(e.target.value)}

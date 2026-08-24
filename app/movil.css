@@ -1,0 +1,168 @@
+/* ==========================================================================
+   Adaptación a móvil de los tres entornos con barra lateral: el repositorio
+   (.shell), Gestión Contractual (.gc) y Comunidad (.cm).
+
+   En escritorio la barra es una columna fija. En móvil esa misma columna se
+   apilaba arriba y empujaba el contenido fuera de la primera pantalla, así
+   que aquí pasa a ser un cajón deslizante que se abre con el botón de menú.
+   Se carga al final de globals.css para ganar en la cascada.
+   ========================================================================== */
+
+/* El botón de menú y la capa oscura solo existen en móvil. */
+.movil-menu { display: none; }
+.movil-tapa { display: none; }
+
+@media (max-width: 900px) {
+
+  /* ---------- Cajón lateral ---------- */
+  .shell, .gc, .cm { grid-template-columns: 1fr !important; display: block !important; }
+
+  .sidebar, .gc-side, .cm-side {
+    position: fixed !important;
+    top: 0; left: 0; bottom: 0;
+    width: min(84vw, 310px);
+    height: 100dvh !important;
+    max-height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform .28s cubic-bezier(.4, 0, .2, 1);
+    /* La barra vuelve a ser columna: en móvil algunas reglas la ponían en fila. */
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    gap: 16px;
+    padding: calc(18px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom));
+    border-right: 1px solid rgba(0, 0, 0, .08);
+    box-shadow: 0 0 60px rgba(10, 20, 80, .3);
+  }
+  .sidebar.abierto, .gc-side.abierto, .cm-side.abierto { transform: translateX(0); }
+
+  /* Dentro del cajón la navegación siempre es vertical. */
+  .side-nav, .gc-nav, .cm-nav { flex-direction: column !important; flex-wrap: nowrap !important; width: 100%; }
+  .side-nav button, .gc-nav button, .cm-nav button { width: 100%; justify-content: flex-start; }
+  .gc-side-user, .cm-side-user, .user-card { margin-top: auto !important; width: 100%; }
+  .side-block { display: none; }
+
+  /* Capa que oscurece el contenido y cierra al tocar. */
+  .movil-tapa {
+    display: block;
+    position: fixed; inset: 0;
+    background: rgba(8, 16, 60, .5);
+    backdrop-filter: blur(2px);
+    z-index: 190;
+    animation: movilAparece .2s ease;
+  }
+  @keyframes movilAparece { from { opacity: 0; } to { opacity: 1; } }
+
+  /* ---------- Botón de menú ---------- */
+  .movil-menu {
+    display: inline-flex; align-items: center; justify-content: center;
+    flex: none;
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    border: 1px solid var(--line, #d7e1f6);
+    background: #fff;
+    color: var(--soft, #4b587c);
+    cursor: pointer;
+  }
+  .movil-menu:active { background: #eef2ff; }
+
+  /* ---------- Barra superior ---------- */
+  /* Vuelve a ser una fila: menú, título y acciones en una sola línea. */
+  .topbar {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px;
+    padding: 10px 14px calc(10px) !important;
+    padding-top: calc(10px + env(safe-area-inset-top)) !important;
+  }
+  .top-title { flex: 1; min-width: 0; }
+  .top-title .eyebrow.mini { display: none; }
+  .top-title strong { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .top-actions { flex: none; gap: 6px; }
+  /* En pantallas estrechas los botones de la barra se reducen a su icono. */
+  .top-actions .chip-btn { padding: 0 11px; height: 38px; font-size: 0; gap: 0; }
+  .top-actions .chip-btn svg { font-size: 13px; }
+
+  /* Cabeceras propias de los módulos. */
+  .gc-top, .cm-top {
+    display: flex; align-items: center; gap: 10px;
+    padding-top: calc(10px + env(safe-area-inset-top)) !important;
+  }
+
+  /* ---------- Contenido ---------- */
+  .wrap { padding: 0 14px; }
+  .main, .gc-main, .cm-main { min-width: 0; width: 100%; }
+
+  /* Rejillas de métricas y tarjetas: dos columnas como mucho. */
+  .stats-grid, .admin-metrics, .gc-kpis, .cm-metricas,
+  .pendientes-tarjetas, .usr-kpis, .executive-kpis, .expediente-metrics {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .grid, .doc-grid, .gc-cards, .cm-lista { grid-template-columns: 1fr !important; }
+
+  /* Divisiones a dos columnas que en móvil se apilan. */
+  .gc-split, .gc-split.wide, .cm-layout, .cm-columnas,
+  .workspace-layout, .forum-layout, .expediente-layout {
+    grid-template-columns: 1fr !important;
+  }
+  /* Las columnas laterales dejan de ser pegajosas al apilarse. */
+  .gc-split > aside, .cm-layout > aside, .expediente-layout > aside,
+  .usr-panel, .cm-contexto { position: static !important; max-height: none; }
+
+  /* Pestañas y filtros: se deslizan en horizontal sin romper la página. */
+  .gc-tabs, .cm-tabs, .process-tabs, .view-toggle, .tabs,
+  .pendientes-filtros, .usr-filtros, .gc-crumb, .cm-crumb {
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .gc-tabs::-webkit-scrollbar, .cm-tabs::-webkit-scrollbar,
+  .pendientes-filtros::-webkit-scrollbar, .usr-filtros::-webkit-scrollbar { display: none; }
+  .gc-tabs button, .cm-tabs button, .pendientes-filtros button, .usr-filtros button { white-space: nowrap; flex: none; }
+
+  /* Grupos de acciones: los botones se reparten el ancho en vez de desbordar. */
+  .gc-actions, .gc-explorer-actions, .cm-acciones {
+    display: flex; flex-wrap: wrap; gap: 7px; width: 100%;
+  }
+  .gc-actions > *, .gc-explorer-actions > *, .cm-acciones > * { flex: 1 1 auto; justify-content: center; }
+
+  /* Cabeceras de tarjeta: título arriba, acciones debajo. */
+  .gc-card-title, .cm-card-title, .section-title-row, .pendientes-head, .usr-top {
+    flex-direction: column; align-items: stretch !important; gap: 11px;
+  }
+
+  /* Tablas anchas: se desplazan dentro de su caja, nunca la página. */
+  .gc-table, .table, .pendientes-lista, .usr-tabla { overflow-x: auto; }
+  .gc-thead, .gc-trow { min-width: 560px; }
+
+  /* Cajones y modales ocupan la pantalla. */
+  .gc-drawer, .cm-drawer { width: 100vw !important; max-width: 100vw !important; }
+  .gc-modal, .modal { width: calc(100vw - 24px) !important; max-width: calc(100vw - 24px) !important; }
+
+  /* Nada debe empujar la página a lo ancho. */
+  html, body { overflow-x: hidden; max-width: 100vw; }
+  img, video, svg { max-width: 100%; }
+
+  /* Objetivos táctiles cómodos. */
+  .gc-icbtn, .iconbtn, .usr-acciones button { min-width: 36px; min-height: 36px; }
+
+  /* iOS amplía el zoom si la letra baja de 16px al enfocar un campo. */
+  input, select, textarea { font-size: 16px !important; }
+}
+
+@media (max-width: 560px) {
+  .stats-grid, .admin-metrics, .gc-kpis, .cm-metricas,
+  .pendientes-tarjetas, .usr-kpis, .executive-kpis, .expediente-metrics {
+    grid-template-columns: 1fr !important;
+  }
+  .gc-reunion-ranuras { grid-template-columns: 1fr !important; }
+  .usr-shell, .pendientes { padding-left: 14px; padding-right: 14px; }
+  .hero-panel, .gc-card, .cm-card { padding: 18px 16px; }
+  .h2, .hero-copy h2 { font-size: 24px; }
+}
