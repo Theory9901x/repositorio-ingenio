@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Check, Download, Eye, Inbox, Plus, Trash2, Upload, X } from "lucide-react";
 import { api, enviarForm, enviarJson, urlArchivo } from "./api";
+import { invalidar, useDatos } from "./cache";
 import { Cargando, Confirmar, Drawer, Estado, IconoArchivo, Vacio, fmtFecha, fmtFechaHora, fmtTam } from "./ui";
 
 const COLUMNAS = "minmax(0,1fr) 150px 120px 130px 120px";
 
 export default function TabSolicitudes({ contratoId, detalle, avisar, setVisor }) {
-  const [datos, setDatos] = useState(null);
   const [participantes, setParticipantes] = useState([]);
   const [drawerNueva, setDrawerNueva] = useState(null);
   const [drawerEntrega, setDrawerEntrega] = useState(null);
@@ -18,11 +18,8 @@ export default function TabSolicitudes({ contratoId, detalle, avisar, setVisor }
   const [confirmar, setConfirmar] = useState(null);
   const [revision, setRevision] = useState(null);
 
-  const cargar = useCallback(async () => {
-    try { setDatos(await api(`/api/gc/contracts/${contratoId}/requests`)); }
-    catch (e) { avisar(e.message, "error"); setDatos({ solicitudes: [], entregas: [] }); }
-  }, [contratoId, avisar]);
-  useEffect(() => { cargar(); }, [cargar]);
+  const { datos, refrescar } = useDatos(`/api/gc/contracts/${contratoId}/requests`, { onError: (e) => avisar(e.message, "error") });
+  const cargar = useCallback(() => { invalidar(`/api/gc/contracts/${contratoId}/requests`); return refrescar(); }, [contratoId, refrescar]);
 
   async function abrirNueva() {
     try { setParticipantes(await api(`/api/gc/contracts/${contratoId}/participants`)); } catch { setParticipantes([]); }

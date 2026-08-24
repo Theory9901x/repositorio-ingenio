@@ -10,7 +10,27 @@ export async function GET(req, { params }) {
   if (ctx.error) return ctx.error;
   const { pool, me, rol, contractId } = ctx;
   const url = new URL(req.url);
-  const userId = rol === ROL.TRABAJADOR ? me.id : Number(url.searchParams.get("userId")) || me.id;
+  const todo = url.searchParams.get("todo") === "1";
+
+  // Con `todo=1` se devuelven también los contratistas, para que abrir la
+  // pestaña no encadene dos peticiones.
+  let participantes = null;
+  if (todo && rol !== ROL.TRABAJADOR) {
+    const [rows] = await pool.query(
+      `SELECT cu.user_id, cu.role_in_contract, cu.specialty, u.full_name, u.cargo,
+              (up.photo_data IS NOT NULL) AS has_photo
+         FROM contract_users cu JOIN users u ON u.id=cu.user_id
+         LEFT JOIN user_profiles up ON up.user_id=u.id
+        WHERE cu.contract_id=?
+        ORDER BY cu.role_in_contract='supervisor', u.full_name`,
+      [contractId]
+    );
+    participantes = rows;
+  }
+
+  const pedido = Number(url.searchParams.get("userId"));
+  const porDefecto = participantes?.find((p) => p.role_in_contract !== "supervisor")?.user_id ?? participantes?.[0]?.user_id ?? me.id;
+  const userId = rol === ROL.TRABAJADOR ? me.id : pedido || porDefecto;
   if (!esPropio(rol, me, userId)) return Response.json({ error: "No puedes consultar evidencias de otro usuario" }, { status: 403 });
   const periodo = url.searchParams.get("period") || null;
 
@@ -44,6 +64,7 @@ export async function GET(req, { params }) {
   const cuenta = (s) => checklist.filter((c) => c.status === s).length;
   return Response.json({
     userId,
+    participantes,
     checklist,
     resumen: {
       requeridas: checklist.filter((c) => c.required).length,

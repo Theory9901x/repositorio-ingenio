@@ -5,6 +5,7 @@ import {
   Check, ClipboardList, Download, Eye, FileText, Paperclip, Plus, Send, Trash2, Upload, Users, X,
 } from "lucide-react";
 import { api, enviarForm, enviarJson, urlArchivo } from "./api";
+import { invalidar, useDatos } from "./cache";
 import {
   Cargando, Confirmar, Drawer, Estado, IconoArchivo, MESES, Vacio,
   fmtFecha, fmtFechaHora, fmtTam, iniciales,
@@ -16,12 +17,9 @@ const hoy = new Date();
 // Contrato → contratista → periodo → actividad → anexos.
 export default function TabActividades({ contratoId, detalle, avisar, setVisor, seleccion, ir }) {
   const esTrabajador = detalle.rol === "TRABAJADOR";
-  const [participantes, setParticipantes] = useState(null);
   const [userId, setUserId] = useState(esTrabajador ? detalle.yo.id : seleccion.userId);
   const [year, setYear] = useState(seleccion.year || hoy.getFullYear());
   const [month, setMonth] = useState(seleccion.month || hoy.getMonth() + 1);
-  const [periodos, setPeriodos] = useState([]);
-  const [datos, setDatos] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [detalleAct, setDetalleAct] = useState(null);
   const [guardando, setGuardando] = useState(false);
@@ -29,31 +27,24 @@ export default function TabActividades({ contratoId, detalle, avisar, setVisor, 
   const [revision, setRevision] = useState(null);
   const [anexos, setAnexos] = useState([]);
 
-  useEffect(() => {
-    if (esTrabajador) { setParticipantes([]); return; }
-    api(`/api/gc/contracts/${contratoId}/participants`)
-      .then((p) => {
-        setParticipantes(p);
-        setUserId((u) => u ?? p.find((x) => x.role_in_contract !== "supervisor")?.user_id ?? p[0]?.user_id ?? null);
-      })
-      .catch(() => setParticipantes([]));
-  }, [contratoId, esTrabajador]);
+  // Una sola petición trae contratistas, periodos, actividades e informe.
+  const url = `/api/gc/contracts/${contratoId}/activities?todo=1${userId ? `&userId=${userId}` : ""}&year=${year}&month=${month}`;
+  const { datos, cargando, refrescar } = useDatos(url, { onError: (e) => avisar(e.message, "error") });
 
-  // Periodos disponibles del contratista seleccionado.
-  useEffect(() => {
-    if (!userId) return;
-    api(`/api/gc/contracts/${contratoId}/activities?userId=${userId}`)
-      .then((d) => setPeriodos(d.periodos || []))
-      .catch(() => setPeriodos([]));
-  }, [contratoId, userId]);
+  const participantes = datos?.participantes ?? (esTrabajador ? [] : null);
+  const periodos = datos?.periodos ?? [];
 
-  const cargar = useCallback(async () => {
-    if (!userId) { setDatos(null); return; }
-    try {
-      setDatos(await api(`/api/gc/contracts/${contratoId}/activities?userId=${userId}&year=${year}&month=${month}`));
-    } catch (e) { avisar(e.message, "error"); setDatos(null); }
-  }, [contratoId, userId, year, month, avisar]);
-  useEffect(() => { cargar(); }, [cargar]);
+  // Tras modificar algo se descarta la caché de todos los periodos del
+  // contrato, no solo la del que se está viendo.
+  const cargar = useCallback(() => {
+    invalidar(`/api/gc/contracts/${contratoId}/activities`);
+    return refrescar();
+  }, [contratoId, refrescar]);
+
+  // El contratista por defecto lo decide el servidor en la primera carga.
+  useEffect(() => {
+    if (!userId && datos?.userId) setUserId(datos.userId);
+  }, [datos, userId]);
 
   useEffect(() => { if (userId) ir?.(userId, year, month); }, [userId, year, month]); // eslint-disable-line
 
@@ -286,8 +277,8 @@ export default function TabActividades({ contratoId, detalle, avisar, setVisor, 
               </div>
 
               <div style={{ display: "grid", gap: 7, paddingTop: 11, borderTop: "1px dashed var(--gc-line)" }}>
-                <Fila etiqueta="Actividades" valor={datos.resumen?.total ?? 0} />
-                <Fila etiqueta="Anexos" valor={datos.resumen?.anexos ?? 0} />
+                <Fila etiqueta="Actividades" valor={datos.actividades?.length ?? 0} />
+                <Fila etiqueta="Anexos" valor={(datos.actividades || []).reduce((s, a) => s + Number(a.anexos || 0), 0)} />
                 {informe?.submitted_at && <Fila etiqueta="Presentado" valor={fmtFechaHora(informe.submitted_at)} />}
                 {informe?.reviewer_name && <Fila etiqueta="Revisado por" valor={informe.reviewer_name} />}
               </div>

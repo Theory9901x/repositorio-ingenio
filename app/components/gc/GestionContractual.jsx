@@ -7,6 +7,7 @@ import {
   Trash2, Users,
 } from "lucide-react";
 import { api, enviarJson } from "./api";
+import { enCache, invalidar, pedir, precargar } from "./cache";
 import { Cargando, Confirmar, Drawer, Estado, Toast, Vacio, Visor, fmtFecha, iniciales } from "./ui";
 import TabResumen from "./TabResumen";
 import TabDocumentos from "./TabDocumentos";
@@ -97,13 +98,17 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
   useEffect(() => { cargarContexto(); }, [cargarContexto]);
 
   // Carga la cabecera contextual cuando cambia el contrato abierto.
+  // Si ya se visitó, se pinta al instante desde la caché y se revalida detrás.
   useEffect(() => {
     if (!contratoId) { setDetalle(null); return; }
     let vigente = true;
-    setCargandoDetalle(true);
-    api(`/api/gc/contracts/${contratoId}`)
+    const url = `/api/gc/contracts/${contratoId}`;
+    const guardado = enCache(url);
+    if (guardado) { setDetalle(guardado); setError(null); }
+    setCargandoDetalle(!guardado);
+    pedir(url, { refrescar: !!guardado })
       .then((d) => { if (vigente) { setDetalle(d); setError(null); } })
-      .catch((e) => { if (vigente) { setDetalle(null); setError(e.message); } })
+      .catch((e) => { if (vigente && !guardado) { setDetalle(null); setError(e.message); } })
       .finally(() => { if (vigente) setCargandoDetalle(false); });
     return () => { vigente = false; };
   }, [contratoId]);
@@ -123,6 +128,7 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
     try {
       if (datos.id) await enviarJson(`/api/gc/companies/${datos.id}`, "PUT", datos);
       else await enviarJson("/api/gc/companies", "POST", datos);
+      invalidar("/api/gc/");
       avisar(datos.id ? "Empresa actualizada" : "Empresa creada");
       setDrawerEmpresa(null);
       await cargarContexto();
@@ -137,10 +143,12 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
         const r = await enviarJson("/api/gc/contracts", "POST", datos);
         setDrawerContrato(null);
         await cargarContexto();
+        invalidar("/api/gc/");
         avisar("Contrato creado");
         ir("contrato", r.id, "resumen");
         return;
       }
+      invalidar("/api/gc/");
       avisar("Contrato actualizado");
       setDrawerContrato(null);
       await cargarContexto();
@@ -151,6 +159,7 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
   async function eliminarContrato(id, titulo) {
     try {
       await api(`/api/gc/contracts/${id}`, { method: "DELETE" });
+      invalidar("/api/gc/");
       avisar(`Contrato «${titulo}» eliminado`);
       setConfirmar(null);
       await cargarContexto();
@@ -318,7 +327,7 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
                 {ctx.contratos.length ? (
                   <div className="gc-grid c2">
                     {filtrar(ctx.contratos, ["title", "code", "company_name", "entity_name"]).map((c) => (
-                      <button className="gc-item" key={c.id} onClick={() => ir("contrato", c.id, "resumen")}>
+                      <button className="gc-item" key={c.id} onMouseEnter={() => precargar(`/api/gc/contracts/${c.id}`)} onClick={() => ir("contrato", c.id, "resumen")}>
                         <span className="ico"><Briefcase size={17} /></span>
                         <span className="txt">
                           <b>{c.title}</b>
@@ -364,7 +373,7 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
                 {contratosEmpresa.length ? (
                   <div className="gc-grid c2">
                     {contratosEmpresa.map((c) => (
-                      <button className="gc-item" key={c.id} onClick={() => ir("contrato", c.id, "resumen")}>
+                      <button className="gc-item" key={c.id} onMouseEnter={() => precargar(`/api/gc/contracts/${c.id}`)} onClick={() => ir("contrato", c.id, "resumen")}>
                         <span className="ico"><Briefcase size={17} /></span>
                         <span className="txt">
                           <b>{c.title}</b>
@@ -482,6 +491,7 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
           if (confirmar.tipo === "contrato") return eliminarContrato(confirmar.id, confirmar.titulo);
           try {
             await api(`/api/gc/companies/${confirmar.id}`, { method: "DELETE" });
+            invalidar("/api/gc/");
             avisar("Empresa eliminada");
             setConfirmar(null); setDrawerEmpresa(null);
             await cargarContexto(); ir();

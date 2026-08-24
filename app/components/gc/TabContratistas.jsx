@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ClipboardList, ShieldCheck, UserMinus, UserPlus, Users } from "lucide-react";
 import { api, enviarJson } from "./api";
+import { invalidar, useDatos } from "./cache";
 import { Cargando, Confirmar, Drawer, Vacio, fmtFecha, iniciales } from "./ui";
 
 const ROLES = [
@@ -12,17 +13,13 @@ const ROLES = [
 const COLUMNAS = "minmax(0,1fr) 150px 120px 110px 90px";
 
 export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
-  const [lista, setLista] = useState(null);
   const [directorio, setDirectorio] = useState([]);
   const [drawer, setDrawer] = useState(null);
   const [confirmar, setConfirmar] = useState(null);
   const [guardando, setGuardando] = useState(false);
 
-  const cargar = useCallback(async () => {
-    try { setLista(await api(`/api/gc/contracts/${contratoId}/participants`)); }
-    catch (e) { avisar(e.message, "error"); setLista([]); }
-  }, [contratoId, avisar]);
-  useEffect(() => { cargar(); }, [cargar]);
+  const { datos: lista, refrescar } = useDatos(`/api/gc/contracts/${contratoId}/participants`, { onError: (e) => avisar(e.message, "error") });
+  const cargar = useCallback(() => { invalidar(`/api/gc/contracts/${contratoId}/`); return refrescar(); }, [contratoId, refrescar]);
 
   async function abrirAlta() {
     try { setDirectorio(await api(`/api/gc/users?contractId=${contratoId}`)); }

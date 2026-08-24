@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, Eye, FileText, Trash2, Upload } from "lucide-react";
 import { api, enviarForm, urlArchivo } from "./api";
+import { invalidar, useDatos } from "./cache";
 import { Cargando, Confirmar, Drawer, IconoArchivo, Vacio, fmtFechaHora, fmtTam, tipoArchivo } from "./ui";
 
 const SECCIONES = [
@@ -13,7 +14,6 @@ const SECCIONES = [
 const COLUMNAS = "minmax(0,1fr) 150px 90px 130px 120px";
 
 export default function TabDocumentos({ contratoId, detalle, avisar, setVisor }) {
-  const [docs, setDocs] = useState(null);
   const [seccion, setSeccion] = useState("");
   const [drawer, setDrawer] = useState(false);
   const [form, setForm] = useState({ section: "soporte", title: "", description: "" });
@@ -22,11 +22,8 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor })
   const [confirmar, setConfirmar] = useState(null);
   const input = useRef(null);
 
-  const cargar = useCallback(async () => {
-    try { setDocs(await api(`/api/gc/contracts/${contratoId}/documents`)); }
-    catch (e) { avisar(e.message, "error"); setDocs([]); }
-  }, [contratoId, avisar]);
-  useEffect(() => { cargar(); }, [cargar]);
+  const { datos: docs, refrescar } = useDatos(`/api/gc/contracts/${contratoId}/documents`, { onError: (e) => avisar(e.message, "error") });
+  const cargar = useCallback(() => { invalidar(`/api/gc/contracts/${contratoId}/documents`); return refrescar(); }, [contratoId, refrescar]);
 
   async function subir() {
     if (!archivo) return avisar("Selecciona un archivo", "error");

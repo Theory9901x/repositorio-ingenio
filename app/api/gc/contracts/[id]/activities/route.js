@@ -17,40 +17,85 @@ async function obtenerPeriodo(pool, contractId, userId, year, month) {
 
 // GET ?userId&year&month  → actividades de ese periodo
 // GET ?userId             → listado de periodos con su resumen
+// Con `todo=1` devuelve además participantes y periodos en la misma
+// respuesta, para que abrir la pestaña cueste una sola ida y vuelta.
 export async function GET(req, { params }) {
   const ctx = await contexto(params.id, "CONTRACT_READ");
   if (ctx.error) return ctx.error;
   const { pool, me, rol, contractId } = ctx;
   const url = new URL(req.url);
+  const todo = url.searchParams.get("todo") === "1";
+
+  let participantes = null;
+  if (todo && rol !== ROL.TRABAJADOR) {
+    const [rows] = await pool.query(
+      `SELECT cu.user_id, cu.role_in_contract, cu.specialty, u.full_name, u.cargo,
+              (up.photo_data IS NOT NULL) AS has_photo,
+              (SELECT COUNT(*) FROM contract_activities a WHERE a.contract_id=cu.contract_id AND a.user_id=cu.user_id) AS actividades
+         FROM contract_users cu JOIN users u ON u.id=cu.user_id
+         LEFT JOIN user_profiles up ON up.user_id=u.id
+        WHERE cu.contract_id=?
+        ORDER BY cu.role_in_contract='supervisor', u.full_name`,
+      [contractId]
+    );
+    participantes = rows;
+  }
 
   // El trabajador siempre consulta sus propias actividades.
-  const userId = rol === ROL.TRABAJADOR ? me.id : Number(url.searchParams.get("userId")) || me.id;
+  const pedido = Number(url.searchParams.get("userId"));
+  const porDefecto = participantes?.find((p) => p.role_in_contract !== "supervisor")?.user_id ?? participantes?.[0]?.user_id ?? me.id;
+  const userId = rol === ROL.TRABAJADOR ? me.id : pedido || porDefecto;
   if (!esPropio(rol, me, userId)) return Response.json({ error: "No puedes consultar actividades de otro usuario" }, { status: 403 });
 
   const year = Number(url.searchParams.get("year"));
   const month = Number(url.searchParams.get("month"));
 
-  if (!year || !month) {
-    // Periodos existentes más el mes actual, con resumen por periodo.
-    const [periodos] = await pool.query(
-      `SELECT p.id, p.year, p.month, p.status,
-              (SELECT COUNT(*) FROM contract_activities a WHERE a.contract_id=p.contract_id AND a.user_id=p.user_id
-                 AND YEAR(COALESCE(a.activity_date,a.created_at))=p.year AND MONTH(COALESCE(a.activity_date,a.created_at))=p.month) AS actividades,
-              (SELECT COUNT(*) FROM contract_activities a WHERE a.contract_id=p.contract_id AND a.user_id=p.user_id
-                 AND a.status='approved'
-                 AND YEAR(COALESCE(a.activity_date,a.created_at))=p.year AND MONTH(COALESCE(a.activity_date,a.created_at))=p.month) AS aprobadas,
-              (SELECT m.status FROM contract_monthly_reports m WHERE m.contract_id=p.contract_id AND m.user_id=p.user_id
-                 AND m.year=p.year AND m.month=p.month) AS informe_estado
-         FROM contract_activity_periods p
-        WHERE p.contract_id=? AND p.user_id=?
-        ORDER BY p.year DESC, p.month DESC`,
-      [contractId, userId]
-    );
-    return Response.json({ userId, periodos });
+  if (todo) {
+    const hoy = new Date();
+    const y = year || hoy.getFullYear();
+    const m = month || hoy.getMonth() + 1;
+    const [periodos, periodo, actividades, informe] = await Promise.all([
+      listarPeriodos(pool, contractId, userId),
+      obtenerPeriodo(pool, contractId, userId, y, m),
+      listarActividades(pool, contractId, userId, y, m),
+      obtenerInforme(pool, contractId, userId, y, m),
+    ]);
+    return Response.json({ userId, participantes, periodos, periodo, actividades, informe, year: y, month: m });
   }
 
-  const periodo = await obtenerPeriodo(pool, contractId, userId, year, month);
-  const [actividades] = await pool.query(
+  if (!year || !month) {
+    return Response.json({ userId, periodos: await listarPeriodos(pool, contractId, userId) });
+  }
+
+  const [periodo, actividades, informe] = await Promise.all([
+    obtenerPeriodo(pool, contractId, userId, year, month),
+    listarActividades(pool, contractId, userId, year, month),
+    obtenerInforme(pool, contractId, userId, year, month),
+  ]);
+  return Response.json({ userId, periodo, actividades, informe });
+}
+
+// Periodos existentes con su resumen.
+async function listarPeriodos(pool, contractId, userId) {
+  const [rows] = await pool.query(
+    `SELECT p.id, p.year, p.month, p.status,
+            (SELECT COUNT(*) FROM contract_activities a WHERE a.contract_id=p.contract_id AND a.user_id=p.user_id
+               AND YEAR(COALESCE(a.activity_date,a.created_at))=p.year AND MONTH(COALESCE(a.activity_date,a.created_at))=p.month) AS actividades,
+            (SELECT COUNT(*) FROM contract_activities a WHERE a.contract_id=p.contract_id AND a.user_id=p.user_id
+               AND a.status='approved'
+               AND YEAR(COALESCE(a.activity_date,a.created_at))=p.year AND MONTH(COALESCE(a.activity_date,a.created_at))=p.month) AS aprobadas,
+            (SELECT m.status FROM contract_monthly_reports m WHERE m.contract_id=p.contract_id AND m.user_id=p.user_id
+               AND m.year=p.year AND m.month=p.month) AS informe_estado
+       FROM contract_activity_periods p
+      WHERE p.contract_id=? AND p.user_id=?
+      ORDER BY p.year DESC, p.month DESC`,
+    [contractId, userId]
+  );
+  return rows;
+}
+
+async function listarActividades(pool, contractId, userId, year, month) {
+  const [rows] = await pool.query(
     `SELECT a.id, a.title, a.description, a.category, a.status, a.user_observation, a.admin_comment, a.result,
             DATE_FORMAT(a.activity_date,'%Y-%m-%d') activity_date,
             DATE_FORMAT(a.created_at,'%Y-%m-%d %H:%i') created_at,
@@ -64,11 +109,18 @@ export async function GET(req, { params }) {
       ORDER BY COALESCE(a.activity_date,a.created_at) ASC, a.id ASC`,
     [contractId, userId, year, month]
   );
+  return rows;
+}
+
+async function obtenerInforme(pool, contractId, userId, year, month) {
   const [[informe]] = await pool.query(
-    "SELECT * FROM contract_monthly_reports WHERE contract_id=? AND user_id=? AND year=? AND month=?",
+    `SELECT m.*, rv.full_name AS reviewer_name,
+            DATE_FORMAT(m.submitted_at,'%Y-%m-%d %H:%i') submitted_at
+       FROM contract_monthly_reports m LEFT JOIN users rv ON rv.id=m.reviewed_by
+      WHERE m.contract_id=? AND m.user_id=? AND m.year=? AND m.month=?`,
     [contractId, userId, year, month]
   );
-  return Response.json({ userId, periodo, actividades, informe: informe || null });
+  return informe || null;
 }
 
 export async function POST(req, { params }) {

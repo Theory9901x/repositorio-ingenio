@@ -7,6 +7,7 @@ import {
   MessageSquare, Paperclip, Pin, Plus, Search, Send, Sparkles, Trash2, Users, X,
 } from "lucide-react";
 import { api, enviarForm, enviarJson } from "../gc/api";
+import { invalidar, pedir, enCache } from "../gc/cache";
 import { fmtTam, iniciales, IconoArchivo, tipoArchivo } from "../gc/ui";
 import PanelConversacion from "./PanelConversacion";
 import CrearPublicacion from "./CrearPublicacion";
@@ -75,8 +76,8 @@ export default function Comunidad() {
     setTimeout(() => setToast(null), tipo === "error" ? 4800 : 2600);
   }, []);
 
-  const cargarContexto = useCallback(async () => {
-    try { setCtx(await api("/api/cm/context")); setError(null); }
+  const cargarContexto = useCallback(async (forzar = false) => {
+    try { setCtx(await pedir("/api/cm/context", { refrescar: forzar })); setError(null); }
     catch (e) { setError(e.message); }
     finally { setCargando(false); }
   }, []);
@@ -96,15 +97,25 @@ export default function Comunidad() {
     if (filtros.q) p.set("q", filtros.q);
     if (filtros.guardados) p.set("guardados", "1");
     p.set("pagina", String(pag));
+    const url = `/api/cm/posts?${p}`;
+    // Si la categoría ya se visitó, se pinta desde la caché sin esperar la red
+    // y se revalida en segundo plano.
+    const guardado = acumular ? null : enCache(url);
+    if (guardado) { setPosts(guardado.posts); setHayMas(guardado.hayMas); setPagina(pag); }
+    else if (!acumular) setPosts(null); // sin caché se muestra el esqueleto
     try {
-      const d = await api(`/api/cm/posts?${p}`);
+      const d = await pedir(url, { refrescar: !!guardado });
       setPosts((prev) => (acumular && prev ? [...prev, ...d.posts] : d.posts));
       setHayMas(d.hayMas);
       setPagina(pag);
-    } catch (e) { avisar(e.message, "error"); setPosts([]); }
+    } catch (e) {
+      if (!guardado) { avisar(e.message, "error"); setPosts([]); }
+    }
   }, [filtros, avisar]);
 
-  useEffect(() => { setPosts(null); cargarPosts(1); }, [cargarPosts]);
+  // Al cambiar de filtro solo se vacía la lista si no hay nada en caché,
+  // para no provocar un parpadeo innecesario.
+  useEffect(() => { cargarPosts(1); }, [cargarPosts]);
 
   useEffect(() => {
     const cerrar = (e) => { if (!e.target.closest?.(".cm-post-menu")) setMenu(null); };
@@ -135,8 +146,8 @@ export default function Comunidad() {
     }
     try {
       await enviarJson(`/api/cm/posts/${post.id}`, "PATCH", { accion });
-      if (accion === "fijar") cargarPosts(1);
-      if (accion === "guardar") cargarContexto();
+      if (accion === "fijar") { invalidar("/api/cm/"); cargarPosts(1); }
+      if (accion === "guardar") { invalidar("/api/cm/"); cargarContexto(true); }
     } catch (e) {
       actualizarPost(post.id, previo); // se revierte si el servidor rechaza
       avisar(e.message, "error");
@@ -146,6 +157,7 @@ export default function Comunidad() {
   async function cerrarConversacion(post) {
     try {
       const r = await enviarJson(`/api/cm/posts/${post.id}`, "PATCH", { accion: "cerrar" });
+      invalidar("/api/cm/");
       avisar(r.cerrado ? "Conversación cerrada" : "Conversación reabierta");
       cargarPosts(1);
       if (abierta?.id === post.id) setAbierta({ ...abierta, closed_at: r.cerrado ? new Date().toISOString() : null });
@@ -156,9 +168,10 @@ export default function Comunidad() {
     if (!confirm(`¿Eliminar «${post.title}»? Se borrarán sus comentarios y adjuntos.`)) return;
     try {
       await api(`/api/cm/posts/${post.id}`, { method: "DELETE" });
+      invalidar("/api/cm/");
       avisar("Publicación eliminada");
       if (abierta?.id === post.id) setAbierta(null);
-      cargarPosts(1); cargarContexto();
+      cargarPosts(1); cargarContexto(true);
     } catch (e) { avisar(e.message, "error"); }
   }
 
@@ -429,7 +442,7 @@ export default function Comunidad() {
         <CrearPublicacion
           inicial={crear} rol={ctx.rol} categorias={ctx.categorias} miembros={ctx.miembros}
           onClose={() => setCrear(null)}
-          onCreada={() => { setCrear(null); avisar("Publicación creada"); cargarPosts(1); cargarContexto(); }}
+          onCreada={() => { setCrear(null); invalidar("/api/cm/"); avisar("Publicación creada"); cargarPosts(1); cargarContexto(true); }}
           avisar={avisar}
         />
       )}

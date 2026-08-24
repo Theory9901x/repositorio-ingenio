@@ -5,6 +5,7 @@ import {
   Check, Download, Eye, ListChecks, Plus, RefreshCw, ShieldCheck, Trash2, Upload, Users, X,
 } from "lucide-react";
 import { api, enviarForm, enviarJson, urlArchivo } from "./api";
+import { invalidar, useDatos } from "./cache";
 import { Anillo, Cargando, Confirmar, Drawer, Estado, IconoArchivo, Vacio, fmtFecha, fmtFechaHora, fmtTam, iniciales } from "./ui";
 
 const COLUMNAS = "minmax(0,1fr) 130px 150px 120px 120px";
@@ -12,9 +13,7 @@ const COLUMNAS = "minmax(0,1fr) 130px 150px 120px 120px";
 // Contrato → contratista → checklist → evidencia → validación.
 export default function TabEvidencias({ contratoId, detalle, avisar, setVisor, ruta, ir }) {
   const esTrabajador = detalle.rol === "TRABAJADOR";
-  const [participantes, setParticipantes] = useState(null);
   const [seleccion, setSeleccion] = useState(esTrabajador ? detalle.yo.id : ruta?.[0] ? Number(ruta[0]) : null);
-  const [datos, setDatos] = useState(null);
   const [requisitos, setRequisitos] = useState([]);
   const [drawerReq, setDrawerReq] = useState(null);
   const [drawerCarga, setDrawerCarga] = useState(null);
@@ -23,24 +22,19 @@ export default function TabEvidencias({ contratoId, detalle, avisar, setVisor, r
   const [guardando, setGuardando] = useState(false);
   const [validacion, setValidacion] = useState(null);
 
-  useEffect(() => {
-    if (esTrabajador) { setParticipantes([]); return; }
-    api(`/api/gc/contracts/${contratoId}/participants`)
-      .then((p) => {
-        setParticipantes(p);
-        // Sin selección explícita, se abre el primer contratista.
-        setSeleccion((s) => s ?? p.find((x) => x.role_in_contract !== "supervisor")?.user_id ?? p[0]?.user_id ?? null);
-      })
-      .catch(() => setParticipantes([]));
-  }, [contratoId, esTrabajador]);
+  // Contratistas y checklist en una sola petición.
+  const url = `/api/gc/contracts/${contratoId}/evidences?todo=1${seleccion ? `&userId=${seleccion}` : ""}`;
+  const { datos, refrescar } = useDatos(url, { onError: (e) => avisar(e.message, "error") });
+  const participantes = datos?.participantes ?? (esTrabajador ? [] : null);
 
-  const cargar = useCallback(async () => {
-    if (!seleccion) { setDatos(null); return; }
-    try {
-      setDatos(await api(`/api/gc/contracts/${contratoId}/evidences?userId=${seleccion}`));
-    } catch (e) { avisar(e.message, "error"); setDatos(null); }
-  }, [contratoId, seleccion, avisar]);
-  useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => {
+    if (!seleccion && datos?.userId) setSeleccion(datos.userId);
+  }, [datos, seleccion]);
+
+  const cargar = useCallback(() => {
+    invalidar(`/api/gc/contracts/${contratoId}/evidences`);
+    return refrescar();
+  }, [contratoId, refrescar]);
 
   async function abrirRequisitos() {
     try { setRequisitos(await api(`/api/gc/contracts/${contratoId}/evidence-requirements`)); }
