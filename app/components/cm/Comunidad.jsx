@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle, ArrowLeft, Bell, BookMarked, Bookmark, Check, ChevronRight, Clock,
   FileText, Flame, FolderOpen, Hash, Heart, Home, Layers, Lightbulb, Lock, MessageCircle,
@@ -54,6 +55,7 @@ export function Avatar({ persona, tam = "" }) {
 }
 
 export default function Comunidad() {
+  const router = useRouter();
   const [ctx, setCtx] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -211,7 +213,7 @@ export default function Comunidad() {
           <button className="on"><MessageSquare size={17} /> Comunidad</button>
           <button onClick={() => (location.href = "/gestion-contractual")}><Layers size={17} /> Contratos / Rutas</button>
           <button onClick={() => (location.href = "/workspace")}><FolderOpen size={17} /> Mi espacio / Plan</button>
-          <button onClick={() => (location.href = "/")}><ArrowLeft size={17} /> Volver al repositorio</button>
+          <button onClick={() => router.push("/")}><ArrowLeft size={17} /> Volver al repositorio</button>
         </nav>
         <div className="cm-side-user">
           <Avatar persona={ctx.me} tam="sm" />

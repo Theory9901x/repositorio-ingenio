@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ClipboardList, Copy, KeyRound, ShieldCheck, UserMinus, UserPlus, Users } from "lucide-react";
+import { ClipboardList, Copy, ShieldCheck, UserMinus, UserPlus, Users } from "lucide-react";
 import { api, enviarJson } from "./api";
 import { invalidar, useDatos } from "./cache";
 import { Cargando, Confirmar, Drawer, Vacio, fmtFecha, iniciales } from "./ui";
@@ -30,7 +30,6 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
   const [guardando, setGuardando] = useState(false);
   const [alta, setAlta] = useState(null);        // formulario de usuario nuevo
   const [credencial, setCredencial] = useState(null); // se muestra una sola vez
-  const [reinicio, setReinicio] = useState(null);
   const [gestionar, setGestionar] = useState(false); // directorio de usuarios
   const [busca, setBusca] = useState("");
 
@@ -66,15 +65,6 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
       setDirectorio(await api(`/api/gc/users?contractId=${contratoId}`).catch(() => directorio));
       cargar();
     } catch (e) { avisar(e.message, "error"); } finally { setGuardando(false); }
-  }
-
-  // Acepta tanto participantes (user_id) como usuarios del directorio (id).
-  async function restablecer(p) {
-    try {
-      const r = await enviarJson("/api/gc/users", "PATCH", { userId: p.user_id ?? p.id });
-      setCredencial({ ...r, titulo: "Contraseña restablecida" });
-      setReinicio(null);
-    } catch (e) { avisar(e.message, "error"); setReinicio(null); }
   }
 
   async function abrirDirectorio() {
@@ -119,8 +109,11 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
             {esAdmin && (
               <>
                 <button className="gc-btn ghost" onClick={abrirDirectorio}>
-                  <KeyRound size={15} /> Usuarios y contraseñas
+                  <Users size={15} /> Directorio
                 </button>
+                <a className="gc-btn ghost" href="/usuarios">
+                  <ShieldCheck size={15} /> Módulo de usuarios
+                </a>
                 <button className="gc-btn ghost" onClick={() => setAlta({ role_in_contract: "contratista", cargo: "" })}>
                   <UserPlus size={15} /> Crear usuario nuevo
                 </button>
@@ -156,7 +149,6 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
                 <div className="gc-rowact">
                   <button className="gc-icbtn" title="Ver actividades" onClick={() => ir("contrato", contratoId, "actividades", p.user_id)}><ClipboardList size={14} /></button>
                   <button className="gc-icbtn" title="Ver evidencias" onClick={() => ir("contrato", contratoId, "evidencias", p.user_id)}><ShieldCheck size={14} /></button>
-                  {esAdmin && <button className="gc-icbtn" title="Restablecer contraseña" onClick={() => setReinicio(p)}><KeyRound size={14} /></button>}
                   {puedeGestionar && <button className="gc-icbtn danger" title="Retirar" onClick={() => setConfirmar(p)}><UserMinus size={14} /></button>}
                 </div>
               </div>
@@ -215,8 +207,8 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
       </Drawer>
 
       {/* Directorio: usuario y contraseña de cualquier persona */}
-      <Drawer abierto={gestionar} titulo="Usuarios y contraseñas"
-        subtitulo="El usuario es el correo. La contraseña se genera aquí y se muestra una sola vez."
+      <Drawer abierto={gestionar} titulo="Directorio de usuarios"
+        subtitulo="Asocia personas existentes a este contrato. Las cuentas y contraseñas se gestionan en el módulo de usuarios."
         onClose={() => setGestionar(false)}>
         <div className="gc-field">
           <label>Buscar</label>
@@ -245,10 +237,6 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
                       <UserPlus size={14} />
                     </button>
                   )}
-                  <button className="gc-btn ghost" style={{ padding: "7px 12px" }}
-                    onClick={() => setReinicio({ ...u, full_name: u.full_name })}>
-                    <KeyRound size={14} /> Contraseña
-                  </button>
                 </div>
               </div>
             ))}
@@ -344,10 +332,6 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
         </>
       )}
 
-      <Confirmar abierto={!!reinicio} titulo="Restablecer contraseña"
-        texto={`Se generará una contraseña temporal para ${reinicio?.full_name}. La actual dejará de funcionar de inmediato.`}
-        etiqueta="Restablecer" tono="warn"
-        onClose={() => setReinicio(null)} onConfirmar={() => restablecer(reinicio)} />
 
       <Confirmar abierto={!!confirmar} titulo="Retirar participante"
         texto={`Se retirará a ${confirmar?.full_name} del contrato. Solo es posible si no tiene actividades ni evidencias registradas.`}

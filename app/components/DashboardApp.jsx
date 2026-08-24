@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Archive, ArrowRight, BarChart3, BriefcaseBusiness, FileSearch, FileText, ScanSearch,
   Grid2X2, LogOut, Map, MessageCircle, Search, Settings, ShieldCheck, UserRound, X,
@@ -37,6 +38,7 @@ async function readJson(response) {
 }
 
 export default function DashboardApp() {
+  const router = useRouter();
   const [user, setUser] = useState(undefined);
   const [section, setSection] = useState("consultation");
   const [processes, setProcesses] = useState([]);
@@ -113,7 +115,20 @@ export default function DashboardApp() {
   if (user === undefined) return <div className="loading"><span className="loader" /> Cargando Grupo Ingenio…</div>;
   if (!user) return <AuthScreen onAuthenticated={async () => { const me = await loadUser(); if (me) await loadAll(); }} />;
 
-  function navigate(next) { if (next === "workspace") { location.href = "/workspace"; return; } if (next === "contracts") { location.href = "/gestion-contractual"; return; } if (next === "community") { location.href = "/comunidad"; return; } setSection(next); setSelectedProcess(null); setDetail(null); }
+  // Los módulos con ruta propia se abren con navegación de cliente: el
+  // documento no se recarga y el cambio es inmediato.
+  const RUTAS_MODULO = { workspace: "/workspace", contracts: "/gestion-contractual", community: "/comunidad", usuarios: "/usuarios" };
+  function navigate(next) {
+    const ruta = RUTAS_MODULO[next];
+    if (ruta) { router.push(ruta); return; }
+    setSection(next); setSelectedProcess(null); setDetail(null);
+  }
+  // Y se adelantan sus bundles para que el primer clic no espere nada.
+  useEffect(() => {
+    if (!user) return;
+    const t = setTimeout(() => { Object.values(RUTAS_MODULO).forEach((r) => router.prefetch(r)); }, 800);
+    return () => clearTimeout(t);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
   async function logout() { await fetch("/api/auth/logout", { method: "POST" }); setUser(null); setDocs([]); }
 
   const navItems = [
@@ -124,6 +139,7 @@ export default function DashboardApp() {
     ["workspace", UserRound, "Mi espacio / Plan"],
     ["contracts", BriefcaseBusiness, "Contratos / Rutas"],
     ...(user.isAdmin ? [["internalDocs", Archive, "Documentación Interna"]] : []),
+    ...(user.isAdmin ? [["usuarios", Users, "Usuarios"]] : []),
     ["community", MessageCircle, "Comunidad"],
     ["profile", UserRound, "Mi perfil"],
     ...(user.isAdmin ? [["admin", Settings, "Administración"]] : []),

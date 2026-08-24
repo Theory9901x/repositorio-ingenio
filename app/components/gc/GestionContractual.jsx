@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Bell, Briefcase, Building2, CalendarClock, ChevronRight, ClipboardList,
   FileText, FolderOpen, Home, Inbox, Layers, Plus, Search, Settings, ShieldCheck,
@@ -34,6 +35,7 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
   // contrato no debe provocar una recarga de la página. La URL se mantiene
   // sincronizada con history para que siga siendo compartible y el botón
   // «atrás» del navegador funcione.
+  const router = useRouter();
   const [ruta, setRuta] = useState(() => rutaInicial.map(String));
   const [ctx, setCtx] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -83,13 +85,18 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
     return () => window.removeEventListener("popstate", alVolver);
   }, []);
 
-  const cargarContexto = useCallback(async () => {
+  const cargarContexto = useCallback(async (refrescar = false) => {
+    // Si el módulo ya se visitó en esta sesión, se pinta al instante desde la
+    // caché y se revalida en segundo plano: la entrada no espera a la red.
+    const url = "/api/gc/context";
+    const guardado = enCache(url);
+    if (guardado) { setCtx(guardado); setError(null); setCargando(false); }
     try {
-      const datos = await api("/api/gc/context");
+      const datos = await pedir(url, { refrescar: refrescar || !!guardado });
       setCtx(datos);
       setError(null);
     } catch (e) {
-      setError(e.message);
+      if (!guardado) setError(e.message);
     } finally {
       setCargando(false);
     }
@@ -235,7 +242,7 @@ export default function GestionContractual({ ruta: rutaInicial = [] }) {
           </button>
           <span className="gc-nav-label">Plataforma</span>
           <button onClick={() => (location.href = "/workspace")}><FolderOpen size={17} /> Mi espacio / Plan</button>
-          <button onClick={() => (location.href = "/")}><ArrowLeft size={17} /> Volver al repositorio</button>
+          <button onClick={() => router.push("/")}><ArrowLeft size={17} /> Volver al repositorio</button>
         </nav>
         <div className="gc-side-user">
           <span className="gc-avatar">{iniciales(ctx.me.full_name)}</span>

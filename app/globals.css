@@ -11,6 +11,7 @@
 @import "./admin-governance.css";
 @import "./platform.css";
 @import "./pendientes.css";
+@import "./usuarios.css";
 @import "./branding.css";
 @import "./auth.css";
 :root{--brand-blue:#0017E8;--brand-navy:#101A63;--brand-cyan:#22D7DF;--brand-orange:#F26A00;--paper:#F3F7FF;--paper2:#E8F0FF;--card:#fff;--ink:#111827;--soft:#4B587C;--muted:#7B87A8;--line:#D7E1F6;--line-2:#B7C8EF;--clay:#0017E8;--clay2:#22D7DF;--pine:#22D7DF;--slate:#40568E;--navy:#101A63;--green:#178A52;--amber:#B57614;--red:#C43A3A;--grey:#8A94AA;--shadow:0 24px 70px -38px rgba(0,23,232,.36);
