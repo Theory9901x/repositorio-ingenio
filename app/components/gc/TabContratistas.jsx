@@ -34,7 +34,8 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
   const [gestionar, setGestionar] = useState(false); // directorio de usuarios
   const [busca, setBusca] = useState("");
 
-  const { datos: lista, refrescar } = useDatos(`/api/gc/contracts/${contratoId}/participants`, { onError: (e) => avisar(e.message, "error") });
+  const { datos: listaRaw, refrescar } = useDatos(`/api/gc/contracts/${contratoId}/participants`, { onError: (e) => avisar(e.message, "error") });
+  const lista = Array.isArray(listaRaw) ? listaRaw : listaRaw ? [] : null;
   const cargar = useCallback(() => { invalidar(`/api/gc/contracts/${contratoId}/`); return refrescar(); }, [contratoId, refrescar]);
 
   async function abrirAlta() {

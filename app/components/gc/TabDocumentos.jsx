@@ -29,10 +29,13 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor })
   const [moviendo, setMoviendo] = useState(null);
   const input = useRef(null);
 
-  const { datos: docs, refrescar: refDocs } = useDatos(
+  const { datos: docsRaw, refrescar: refDocs } = useDatos(
     `/api/gc/contracts/${contratoId}/documents`, { onError: (e) => avisar(e.message, "error") });
-  const { datos: carpetas, refrescar: refCarpetas } = useDatos(
+  const { datos: carpetasRaw, refrescar: refCarpetas } = useDatos(
     `/api/gc/contracts/${contratoId}/folders`, { onError: (e) => avisar(e.message, "error") });
+  // Si el servidor devolviera algo que no es una lista, la pestaña no debe romperse.
+  const docs = Array.isArray(docsRaw) ? docsRaw : docsRaw ? [] : null;
+  const carpetas = Array.isArray(carpetasRaw) ? carpetasRaw : carpetasRaw ? [] : null;
 
   const cargar = useCallback(() => {
     invalidar(`/api/gc/contracts/${contratoId}/`);
