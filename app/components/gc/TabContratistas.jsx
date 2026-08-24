@@ -223,7 +223,7 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
         </div>
         <div style={{ display: "grid", gap: 8 }}>
           {directorio
-            .filter((u) => !busca.trim() || `${u.full_name} ${u.email || ""}`.toLowerCase().includes(busca.trim().toLowerCase()))
+            .filter((u) => !busca.trim() || `${u.full_name} ${u.username || ""} ${u.email || ""}`.toLowerCase().includes(busca.trim().toLowerCase()))
             .map((u) => (
               <div className="gc-item" key={u.id} style={{ cursor: "default" }}>
                 <span className="gc-avatar" style={{ width: 34, height: 34, borderRadius: 11, fontSize: 12 }}>
@@ -334,7 +334,7 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
             </div>
             <div className="gc-modal-foot">
               <button className="gc-btn ghost" onClick={() => {
-                navigator.clipboard?.writeText(`Usuario: ${credencial.email}\nContraseña: ${credencial.clave}`);
+                navigator.clipboard?.writeText(`Usuario: ${credencial.username || credencial.email}\nContraseña: ${credencial.clave}`);
                 avisar("Credenciales copiadas");
               }}><Copy size={14} /> Copiar</button>
               <button className="gc-btn primary" onClick={() => setCredencial(null)}>Entendido</button>
