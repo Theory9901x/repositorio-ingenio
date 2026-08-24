@@ -61,6 +61,28 @@ if (SOLO_CLAVES) {
   process.exit(0);
 }
 
+// Modo «revisar»: estado de las cuentas y comprobacion de una contrasena.
+//   node scripts/gobernacion.mjs revisar
+if (process.argv.includes("revisar")) {
+  const [detalle] = await db.query(
+    "SELECT id, full_name, username, email, role, is_active, LENGTH(password_hash) AS largo FROM users ORDER BY id"
+  );
+  for (const u of detalle) {
+    console.log(` #${u.id} ${String(u.username).padEnd(18)} activo:${u.is_active} rol:${String(u.role).padEnd(8)} hash:${u.largo} correo:${u.email || "-"}`);
+  }
+  // Comprobacion directa de las claves entregadas.
+  const PRUEBAS = [["carlos.robayo", "Ingenio.D5URsw"], ["natalia.forero", "Ingenio.5UyvKw"], ["laura.vega", "Ingenio.PmQ7JA"]];
+  console.log("");
+  for (const [usuario, clave] of PRUEBAS) {
+    const [[u]] = await db.query("SELECT password_hash, is_active FROM users WHERE username=?", [usuario]);
+    if (!u) { console.log(` ${usuario}: NO EXISTE`); continue; }
+    const ok = await bcrypt.compare(clave, u.password_hash);
+    console.log(` ${usuario.padEnd(18)} clave correcta: ${ok ? "SI" : "NO"}   activo: ${u.is_active}`);
+  }
+  await db.end();
+  process.exit(0);
+}
+
 // Modo «terra»: desactiva la cuenta de Terra y la retira de los contratos.
 if (process.argv.includes("terra")) {
   const [fuera] = await db.query("UPDATE users SET is_active=0 WHERE username='terra.vega'");
