@@ -105,6 +105,17 @@ if (jefe) {
   }
 }
 
+// Terra sale del sistema: la cuenta se desactiva (no se borra, para no dejar
+// huérfanos sus registros históricos) y deja de poder entrar y de aparecer.
+const [fuera] = await db.query(
+  "UPDATE users SET is_active=0 WHERE username='terra.vega' OR LOWER(full_name) LIKE '%terra%'"
+);
+if (fuera.affectedRows) {
+  await db.query("DELETE cu FROM contract_users cu JOIN users u ON u.id=cu.user_id WHERE u.is_active=0");
+  await db.query("DELETE cm FROM contract_members cm JOIN users u ON u.id=cm.user_id WHERE u.is_active=0");
+  console.log("Terra desactivada y retirada de los contratos.");
+}
+
 console.log("\nCREDENCIALES (se muestran una sola vez)");
 for (const c of credenciales) console.log(` ${c.full_name.padEnd(26)} usuario: ${c.username.padEnd(18)} clave: ${c.clave}   [${c.nota}]`);
 console.log("\nInscritos en el contrato #" + gob.id);
