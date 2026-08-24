@@ -6,7 +6,7 @@ import {
   Archive, ArrowRight, BarChart3, BriefcaseBusiness, FileSearch, FileText, ScanSearch,
   Grid2X2, LogOut, Map, MessageCircle, Search, Settings, ShieldCheck, UserRound, X,
   Mail, Lock, IdCard, Sparkles, CheckCircle2, Paperclip, FolderSearch,
-  Eye, EyeOff, Workflow, Users, FileCheck2, ClipboardList, Menu,
+  Eye, EyeOff, Workflow, Users, FileCheck2, ClipboardList, Menu, RefreshCw,
 } from "lucide-react";
 import AdminDocumentPanel from "./AdminDocumentPanel";
 import ContractRoutesPanel from "./ContractRoutesPanel";
@@ -158,7 +158,7 @@ export default function DashboardApp() {
       <div className="user-card">{user.hasPhoto ? <img className="avatar user-avatar-photo" src={`/api/profile/photo/${user.id}`} alt="Foto de perfil" /> : <div className="avatar">{(user.full_name || user.email || "U").charAt(0).toUpperCase()}</div>}<div className="user-meta"><strong>{user.full_name || user.email}</strong><span>{user.cargo || "Usuario"}</span>{user.isAdmin && <em><ShieldCheck size={11} /> Administrador</em>}</div></div>
     </aside>
     <main className="main">
-      <header className="topbar"><button className="movil-menu" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú"><Menu size={19} /></button><div className="top-title"><span className="eyebrow mini">Repositorio Ingenio</span><strong>{selectedProcess ? selectedProcess.name : SECTION_TITLES[section]}</strong></div><div className="top-actions"><AlertsCenter/><button className="chip-btn" onClick={loadAll} disabled={loadingData}>Actualizar</button><button className="chip-btn danger-lite" onClick={logout}><LogOut size={16} /> Salir</button></div></header>
+      <header className="topbar"><button className="movil-menu" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú"><Menu size={19} /></button><div className="top-title"><span className="eyebrow mini">Repositorio Ingenio</span><strong>{selectedProcess ? selectedProcess.name : SECTION_TITLES[section]}</strong></div><div className="top-actions"><AlertsCenter/><button className="chip-btn" onClick={loadAll} disabled={loadingData}><RefreshCw size={16} /> Actualizar</button><button className="chip-btn danger-lite" onClick={logout}><LogOut size={16} /> Salir</button></div></header>
       <div className="wrap dashboard-wrap">
         {dataError && <div className="error-banner">{dataError}<button onClick={loadAll}>Reintentar</button></div>}
         {section === "consultation" && !selectedProcess && <MisPendientes compacto onVerTodo={() => navigate("pendientes")} />}

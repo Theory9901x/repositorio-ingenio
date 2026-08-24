@@ -126,6 +126,20 @@
   .pendientes-filtros::-webkit-scrollbar, .usr-filtros::-webkit-scrollbar { display: none; }
   .gc-tabs button, .cm-tabs button, .pendientes-filtros button, .usr-filtros button { white-space: nowrap; flex: none; }
 
+  /* Las migas de pan van en una sola línea que se desliza, sin partir palabras. */
+  .gc-crumb, .cm-crumb, .crumb {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .gc-crumb::-webkit-scrollbar, .cm-crumb::-webkit-scrollbar, .crumb::-webkit-scrollbar { display: none; }
+  .gc-crumb button, .gc-crumb span, .cm-crumb button, .cm-crumb span, .crumb button, .crumb span {
+    white-space: nowrap; flex: none;
+  }
+  /* En el móvil basta con el último tramo del recorrido. */
+  .gc-crumb > button:first-child span, .gc-crumb .sep:first-of-type { display: none; }
+
   /* Grupos de acciones: los botones se reparten el ancho en vez de desbordar. */
   .gc-actions, .gc-explorer-actions, .cm-acciones {
     display: flex; flex-wrap: wrap; gap: 7px; width: 100%;
