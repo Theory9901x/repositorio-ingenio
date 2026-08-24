@@ -20,6 +20,8 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
   const [alta, setAlta] = useState(null);        // formulario de usuario nuevo
   const [credencial, setCredencial] = useState(null); // se muestra una sola vez
   const [reinicio, setReinicio] = useState(null);
+  const [gestionar, setGestionar] = useState(false); // directorio de usuarios
+  const [busca, setBusca] = useState("");
 
   const { datos: lista, refrescar } = useDatos(`/api/gc/contracts/${contratoId}/participants`, { onError: (e) => avisar(e.message, "error") });
   const cargar = useCallback(() => { invalidar(`/api/gc/contracts/${contratoId}/`); return refrescar(); }, [contratoId, refrescar]);
@@ -54,12 +56,31 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
     } catch (e) { avisar(e.message, "error"); } finally { setGuardando(false); }
   }
 
+  // Acepta tanto participantes (user_id) como usuarios del directorio (id).
   async function restablecer(p) {
     try {
-      const r = await enviarJson("/api/gc/users", "PATCH", { userId: p.user_id });
+      const r = await enviarJson("/api/gc/users", "PATCH", { userId: p.user_id ?? p.id });
       setCredencial({ ...r, titulo: "Contraseña restablecida" });
       setReinicio(null);
     } catch (e) { avisar(e.message, "error"); setReinicio(null); }
+  }
+
+  async function abrirDirectorio() {
+    try {
+      setDirectorio(await api(`/api/gc/users?contractId=${contratoId}`));
+      setBusca("");
+      setGestionar(true);
+    } catch (e) { avisar(e.message, "error"); }
+  }
+
+  async function asociarDesdeDirectorio(u, rol = "contratista") {
+    try {
+      await enviarJson(`/api/gc/contracts/${contratoId}/participants`, "POST", {
+        user_id: u.id, role_in_contract: rol, status: "activo",
+      });
+      avisar(`${u.full_name} asociado al contrato`);
+      cargar();
+    } catch (e) { avisar(e.message, "error"); }
   }
 
   async function retirar(p) {
@@ -83,9 +104,14 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
           <h3>Participantes del contrato</h3>
           <div className="gc-actions">
             {esAdmin && (
-              <button className="gc-btn ghost" onClick={() => setAlta({ role_in_contract: "contratista", cargo: "" })}>
-                <UserPlus size={15} /> Crear usuario nuevo
-              </button>
+              <>
+                <button className="gc-btn ghost" onClick={abrirDirectorio}>
+                  <KeyRound size={15} /> Usuarios y contraseñas
+                </button>
+                <button className="gc-btn ghost" onClick={() => setAlta({ role_in_contract: "contratista", cargo: "" })}>
+                  <UserPlus size={15} /> Crear usuario nuevo
+                </button>
+              </>
             )}
             {puedeGestionar && <button className="gc-btn primary" onClick={abrirAlta}><UserPlus size={15} /> Asociar participante</button>}
           </div>
@@ -173,6 +199,50 @@ export default function TabContratistas({ contratoId, detalle, avisar, ir }) {
             <div className="gc-field"><label>Fin</label><input type="date" value={drawer.end_date || ""} onChange={(e) => setDrawer({ ...drawer, end_date: e.target.value })} /></div>
           </div>
         )}
+      </Drawer>
+
+      {/* Directorio: usuario y contraseña de cualquier persona */}
+      <Drawer abierto={gestionar} titulo="Usuarios y contraseñas"
+        subtitulo="El usuario es el correo. La contraseña se genera aquí y se muestra una sola vez."
+        onClose={() => setGestionar(false)}>
+        <div className="gc-field">
+          <label>Buscar</label>
+          <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Nombre o correo…" autoFocus />
+        </div>
+        <div style={{ display: "grid", gap: 8 }}>
+          {directorio
+            .filter((u) => !busca.trim() || `${u.full_name} ${u.email || ""}`.toLowerCase().includes(busca.trim().toLowerCase()))
+            .map((u) => (
+              <div className="gc-item" key={u.id} style={{ cursor: "default" }}>
+                <span className="gc-avatar" style={{ width: 34, height: 34, borderRadius: 11, fontSize: 12 }}>
+                  {u.has_photo ? <img src={`/api/profile/photo/${u.id}`} alt="" /> : iniciales(u.full_name)}
+                </span>
+                <span className="txt">
+                  <b>{u.full_name}</b>
+                  <small style={{ fontFamily: "'JetBrains Mono', monospace" }}>{u.email || "sin correo"}</small>
+                  <small>
+                    {u.cargo || "Sin cargo"}
+                    {u.role === "admin" && <span className="gc-badge info" style={{ marginLeft: 6 }}>Administrador</span>}
+                    {yaAsociados.has(u.id) && <span className="gc-badge ok" style={{ marginLeft: 6 }}>En el contrato</span>}
+                  </small>
+                </span>
+                <div className="gc-rowact">
+                  {!yaAsociados.has(u.id) && (
+                    <button className="gc-icbtn" title="Asociar al contrato" onClick={() => asociarDesdeDirectorio(u)}>
+                      <UserPlus size={14} />
+                    </button>
+                  )}
+                  <button className="gc-btn ghost" style={{ padding: "7px 12px" }}
+                    onClick={() => setReinicio({ ...u, full_name: u.full_name })}>
+                    <KeyRound size={14} /> Contraseña
+                  </button>
+                </div>
+              </div>
+            ))}
+          {!directorio.length && (
+            <p style={{ fontSize: 12.5, color: "var(--gc-muted)", fontWeight: 700, margin: 0 }}>No hay usuarios activos.</p>
+          )}
+        </div>
       </Drawer>
 
       {/* Alta de usuario nuevo */}
