@@ -10,7 +10,6 @@ import {
 import AdminDocumentPanel from "./AdminDocumentPanel";
 import ContractRoutesPanel from "./ContractRoutesPanel";
 import ProcessDetailView from "./ProcessDetailView";
-import WorkspacePanel from "./WorkspacePanel";
 import ProfilePanel from "./ProfilePanel";
 import CommunityPanel from "./CommunityPanel";
 import AdminContentPanel from "./AdminContentPanel";
@@ -113,7 +112,7 @@ export default function DashboardApp() {
   if (user === undefined) return <div className="loading"><span className="loader" /> Cargando Grupo Ingenio…</div>;
   if (!user) return <AuthScreen onAuthenticated={async () => { const me = await loadUser(); if (me) await loadAll(); }} />;
 
-  function navigate(next) { setSection(next); setSelectedProcess(null); setDetail(null); }
+  function navigate(next) { if (next === "workspace") { location.href = "/workspace"; return; } setSection(next); setSelectedProcess(null); setDetail(null); }
   async function logout() { await fetch("/api/auth/logout", { method: "POST" }); setUser(null); setDocs([]); }
 
   const navItems = [
@@ -142,7 +141,6 @@ export default function DashboardApp() {
         {section === "consultation" && (selectedProcess
           ? <ProcessDetailView process={selectedProcess} docs={docs} docTypes={docTypes} user={user} onChanged={loadAll} onBack={() => setSelectedProcess(null)} onOpenDoc={setDetail} />
           : <Consultation processes={matchingProcesses} docs={docs} query={query} setQuery={setQuery} view={view} setView={setView} countFor={countFor} onOpen={setSelectedProcess} mapFailed={mapFailed} setMapFailed={setMapFailed} />)}
-        {section === "workspace" && <WorkspacePanel docs={docs} procById={procById} typeById={typeById} setDetail={setDetail} />}
         {section === "advancedSearch" && <AdvancedSearchPanel />}
         {section === "executive" && user.isAdmin && <ExecutiveDashboardPanel />}
         {section === "contracts" && <ContractRoutesPanel user={user} />}
