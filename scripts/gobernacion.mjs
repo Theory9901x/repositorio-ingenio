@@ -12,6 +12,7 @@ import mysql from "mysql2/promise";
 
 const APLICAR = process.argv.includes("aplicar");
 const RESET = process.argv.includes("reset");
+const SOLO_CLAVES = process.argv.includes("claves");
 
 const PERSONAS = [
   { full_name: "Carlos Alberto Robayo", username: "carlos.robayo", cargo: "CEO", role: "admin", rol_contrato: "supervisor" },
@@ -44,6 +45,21 @@ const [usuarios] = await db.query(
 );
 console.log("\nUSUARIOS");
 for (const x of usuarios) console.log(` #${x.id}  ${x.full_name}  (${x.username || x.email || "sin usuario"})  ${x.role}${x.is_active ? "" : "  [inactivo]"}`);
+
+// Modo «claves»: únicamente restablece la contraseña de las tres personas
+// y la muestra. No inscribe, no desactiva, no toca nada más.
+if (SOLO_CLAVES) {
+  console.log("CREDENCIALES (se muestran una sola vez)");
+  for (const p of PERSONAS) {
+    const [[u]] = await db.query("SELECT id FROM users WHERE LOWER(username)=?", [p.username]);
+    if (!u) { console.log(` ${p.full_name}: NO EXISTE (usuario ${p.username})`); continue; }
+    const clave = claveTemporal();
+    await db.query("UPDATE users SET password_hash=? WHERE id=?", [await bcrypt.hash(clave, 12), u.id]);
+    console.log(` ${p.full_name.padEnd(26)} usuario: ${p.username.padEnd(18)} clave: ${clave}`);
+  }
+  await db.end();
+  process.exit(0);
+}
 
 const terra = (t) => /terra/i.test(String(t || ""));
 console.log("\nCOINCIDENCIAS CON «TERRA»");
