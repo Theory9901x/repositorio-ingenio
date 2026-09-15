@@ -192,18 +192,28 @@ export default function MiEspacio({ user }) {
   }
 
   /* ---------- archivos ---------- */
-  async function upload(fileObj) {
-    if (!fileObj) return;
+  async function upload(archivos) {
+    const lista = [...(archivos?.length !== undefined ? archivos : [archivos])].filter(Boolean);
+    if (!lista.length) return;
     setUploading(true);
-    const fd = new FormData();
-    fd.set("source", "personal");
-    if (selFolder) fd.set("folderId", selFolder);
-    fd.set("title", fileObj.name);
-    fd.set("file", fileObj);
-    const res = await fetch("/api/workspace/files", { method: "POST", body: fd });
+    let subidos = 0;
+    for (const fileObj of lista) {
+      const fd = new FormData();
+      fd.set("source", "personal");
+      if (selFolder) fd.set("folderId", selFolder);
+      fd.set("title", fileObj.name);
+      fd.set("file", fileObj);
+      const res = await fetch("/api/workspace/files", { method: "POST", body: fd });
+      if (!res.ok) {
+        setUploading(false);
+        notify(await errorOf(res, subidos ? `Fallo un archivo (se subieron ${subidos} de ${lista.length})` : "No se pudo subir el archivo"), "error");
+        if (subidos) load();
+        return;
+      }
+      subidos++;
+    }
     setUploading(false);
-    if (!res.ok) return notify(await errorOf(res, "No se pudo subir el archivo"), "error");
-    notify("Archivo agregado a tu espacio");
+    notify(subidos > 1 ? `${subidos} archivos agregados a tu espacio` : "Archivo agregado a tu espacio");
     load();
   }
   async function deleteFile(f) {
@@ -449,7 +459,7 @@ export default function MiEspacio({ user }) {
 
   return (
     <div className={`me-shell ${vivid ? "vivid" : ""}`}>
-      <input ref={fileInput} type="file" hidden onChange={(e) => { upload(e.target.files?.[0]); e.target.value = ""; }} />
+      <input ref={fileInput} type="file" multiple hidden onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
 
       {/* ============ Sidebar ============ */}
       {menuAbierto && <div className="movil-tapa" onClick={() => setMenuAbierto(false)} />}

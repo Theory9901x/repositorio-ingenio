@@ -75,18 +75,29 @@ export default function TabMesas({ contratoId, detalle, avisar, setVisor }) {
     } catch (e) { avisar(e.message, "error"); } finally { setGuardando(false); }
   }
 
-  async function subir(mesa, kind, archivo) {
-    if (!archivo) return;
+  // Acepta uno o varios archivos: fotos y soportes suelen ir en lote.
+  async function subir(mesa, kind, archivos) {
+    const lista = [...(archivos?.length !== undefined ? archivos : [archivos])].filter(Boolean);
+    if (!lista.length) return;
     setSubiendo({ id: mesa.id, kind });
+    let subidos = 0;
     try {
-      const fd = new FormData();
-      fd.set("meetingId", mesa.id);
-      fd.set("kind", kind);
-      fd.set("file", await prepararArchivo(archivo));
-      await enviarForm(`/api/gc/contracts/${contratoId}/meetings`, "PUT", fd);
-      avisar(kind === "foto" ? "Fotografía agregada" : "Archivo anexado");
+      for (const archivo of lista) {
+        const fd = new FormData();
+        fd.set("meetingId", mesa.id);
+        fd.set("kind", kind);
+        fd.set("file", await prepararArchivo(archivo));
+        await enviarForm(`/api/gc/contracts/${contratoId}/meetings`, "PUT", fd);
+        subidos++;
+      }
+      avisar(kind === "foto"
+        ? (subidos > 1 ? `${subidos} fotografías agregadas` : "Fotografía agregada")
+        : subidos > 1 ? `${subidos} archivos anexados` : "Archivo anexado");
       recargar();
-    } catch (e) { avisar(e.message, "error"); } finally { setSubiendo(null); }
+    } catch (e) {
+      avisar(subidos ? `${e.message} (se subieron ${subidos} de ${lista.length})` : e.message, "error");
+      if (subidos) recargar();
+    } finally { setSubiendo(null); }
   }
 
   async function eliminar() {
@@ -287,10 +298,7 @@ export default function TabMesas({ contratoId, detalle, avisar, setVisor }) {
                           <label className="gc-reunion-agregar">
                             <ImageIcon size={13} /> {subiendo?.id === m.id && subiendo?.kind === "foto" ? "Subiendo…" : "Agregar fotos"}
                             <input type="file" accept="image/*" multiple hidden
-                              onChange={async (e) => {
-                                for (const f of [...e.target.files]) await subir(m, "foto", f);
-                                e.target.value = "";
-                              }} />
+                              onChange={(e) => { subir(m, "foto", e.target.files); e.target.value = ""; }} />
                           </label>
                         )}
                       </div>
@@ -330,8 +338,8 @@ export default function TabMesas({ contratoId, detalle, avisar, setVisor }) {
                         {puedeGestionar && (
                           <label className="gc-reunion-agregar">
                             <Paperclip size={13} /> Agregar otro soporte
-                            <input type="file" hidden
-                              onChange={(e) => { subir(m, "anexo", e.target.files?.[0]); e.target.value = ""; }} />
+                            <input type="file" multiple hidden
+                              onChange={(e) => { subir(m, "anexo", e.target.files); e.target.value = ""; }} />
                           </label>
                         )}
                       </div>

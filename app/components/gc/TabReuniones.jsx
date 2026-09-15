@@ -42,18 +42,28 @@ export default function TabReuniones({ contratoId, detalle, avisar, setVisor }) 
     } catch (e) { avisar(e.message, "error"); } finally { setGuardando(false); }
   }
 
-  async function subir(reunion, kind, archivo) {
-    if (!archivo) return;
+  // Acepta uno o varios archivos: los soportes suelen subirse en lote.
+  async function subir(reunion, kind, archivos) {
+    const lista = [...(archivos?.length !== undefined ? archivos : [archivos])].filter(Boolean);
+    if (!lista.length) return;
     setSubiendo({ id: reunion.id, kind });
+    let subidos = 0;
     try {
-      const fd = new FormData();
-      fd.set("meetingId", reunion.id);
-      fd.set("kind", kind);
-      fd.set("file", await prepararArchivo(archivo));
-      await enviarForm(`/api/gc/contracts/${contratoId}/meetings`, "PUT", fd);
-      avisar(kind === "acta" ? "Acta anexada" : kind === "asistencia" ? "Asistencia anexada" : "Anexo agregado");
+      for (const archivo of lista) {
+        const fd = new FormData();
+        fd.set("meetingId", reunion.id);
+        fd.set("kind", kind);
+        fd.set("file", await prepararArchivo(archivo));
+        await enviarForm(`/api/gc/contracts/${contratoId}/meetings`, "PUT", fd);
+        subidos++;
+      }
+      avisar(kind === "acta" ? "Acta anexada" : kind === "asistencia" ? "Asistencia anexada"
+        : subidos > 1 ? `${subidos} anexos agregados` : "Anexo agregado");
       cargar();
-    } catch (e) { avisar(e.message, "error"); } finally { setSubiendo(null); }
+    } catch (e) {
+      avisar(subidos ? `${e.message} (se subieron ${subidos} de ${lista.length})` : e.message, "error");
+      if (subidos) cargar();
+    } finally { setSubiendo(null); }
   }
 
   async function eliminar() {
@@ -212,8 +222,8 @@ export default function TabReuniones({ contratoId, detalle, avisar, setVisor }) 
                             {puedeGestionar && (
                               <label className="gc-reunion-agregar">
                                 <Paperclip size={13} /> {subiendo?.id === r.id && subiendo?.kind === "anexo" ? "Subiendo…" : "Agregar otro soporte"}
-                                <input type="file" hidden disabled={subiendo?.id === r.id}
-                                  onChange={(e) => { subir(r, "anexo", e.target.files?.[0]); e.target.value = ""; }} />
+                                <input type="file" multiple hidden disabled={subiendo?.id === r.id}
+                                  onChange={(e) => { subir(r, "anexo", e.target.files); e.target.value = ""; }} />
                               </label>
                             )}
                           </div>
