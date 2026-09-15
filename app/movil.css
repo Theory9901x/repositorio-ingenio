@@ -161,6 +161,28 @@
     flex-direction: column; align-items: stretch !important; gap: 11px;
   }
 
+  /* Explorador de documentos y evidencias: en el celular se navega por las
+     tarjetas de carpeta y las migas; el árbol lateral duplicaba todo. */
+  .gc-arbol { display: none !important; }
+  .gc-foldergrid { grid-template-columns: 1fr 1fr !important; }
+
+  /* La carga rápida se vuelve una barra fija abajo, como en una app: la
+     cámara siempre a un toque mientras se recorren las carpetas. */
+  .gc-cargarapida {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 60;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, .92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(160, 180, 235, .35);
+    flex-wrap: nowrap;
+  }
+  .gc-cargarapida .gc-btn { flex: 1; justify-content: center; padding: 12px 8px; font-size: 12.5px; }
+  /* El contenido no debe quedar tapado por la barra. */
+  .gc-main:has(.gc-cargarapida) { padding-bottom: 78px; }
+
   /* Tablas anchas: se desplazan dentro de su caja, nunca la página. */
   .gc-table, .table, .pendientes-lista, .usr-tabla { overflow-x: auto; }
   .gc-thead, .gc-trow { min-width: 560px; }

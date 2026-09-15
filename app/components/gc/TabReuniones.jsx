@@ -5,6 +5,7 @@ import {
   CalendarDays, ClipboardCheck, Download, Eye, FileDown, FileText, FileType2, MapPin, Paperclip, Plus, Trash2, Upload, Users,
 } from "lucide-react";
 import { api, enviarForm, enviarJson, urlArchivo } from "./api";
+import { prepararArchivo } from "./imagen";
 import { invalidar, useDatos } from "./cache";
 import { BotonExportar, Cargando, Confirmar, Drawer, IconoArchivo, Vacio, fmtFecha, fmtTam } from "./ui";
 
@@ -48,7 +49,7 @@ export default function TabReuniones({ contratoId, detalle, avisar, setVisor }) 
       const fd = new FormData();
       fd.set("meetingId", reunion.id);
       fd.set("kind", kind);
-      fd.set("file", archivo);
+      fd.set("file", await prepararArchivo(archivo));
       await enviarForm(`/api/gc/contracts/${contratoId}/meetings`, "PUT", fd);
       avisar(kind === "acta" ? "Acta anexada" : kind === "asistencia" ? "Asistencia anexada" : "Anexo agregado");
       cargar();

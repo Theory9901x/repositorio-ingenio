@@ -2,17 +2,19 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
-  ChevronDown, ChevronRight, Download, FileText, Folder, FolderOpen, FolderPlus,
+  Camera, ChevronDown, ChevronRight, Download, FileText, Folder, FolderOpen, FolderPlus,
   Home, MoveRight, Pencil, Trash2, Upload,
 } from "lucide-react";
 import { api, enviarForm, enviarJson, urlArchivo } from "./api";
+import { prepararArchivo } from "./imagen";
 import { invalidar, useDatos } from "./cache";
 import { BotonExportar, Cargando, Confirmar, Drawer, IconoArchivo, Vacio, fmtFechaHora, fmtTam, tipoArchivo } from "./ui";
 
 const SECCIONES = [
   ["contratacion", "Documentos contractuales"], ["cronograma", "Cronograma"], ["plan_trabajo", "Plan de trabajo"],
   ["acta", "Actas"], ["formato", "Formatos"], ["cuenta_cobro", "Soportes de cuenta"],
-  ["ejecucion", "Soportes de ejecución"], ["soporte", "Otros soportes"],
+  ["ejecucion", "Soportes de ejecución"], ["evidencia", "Evidencias"],
+  ["notificacion", "Notificaciones"], ["soporte", "Otros soportes"],
 ];
 const COLUMNAS = "minmax(0,1fr) 140px 80px 120px 110px";
 
@@ -25,13 +27,14 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor, a
   const [carpeta, setCarpeta] = useState(null);   // carpeta abierta (null = raíz)
   const [abiertas, setAbiertas] = useState({});
   const [drawer, setDrawer] = useState(false);
-  const [form, setForm] = useState({ section: "soporte", title: "", description: "" });
+  const [form, setForm] = useState(() => ({ section: ambito === "evidencias" ? "evidencia" : "soporte", title: "", description: "" }));
   const [archivo, setArchivo] = useState(null);
   const [subiendo, setSubiendo] = useState(false);
   const [confirmar, setConfirmar] = useState(null);
   const [modalCarpeta, setModalCarpeta] = useState(null);
   const [nombreCarpeta, setNombreCarpeta] = useState("");
   const [moviendo, setMoviendo] = useState(null);
+  const [progreso, setProgreso] = useState(null); // "2 de 5" durante la carga rapida
   const input = useRef(null);
 
   const { datos: docsRaw, refrescar: refDocs } = useDatos(
@@ -91,22 +94,42 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor, a
   }
 
   /* ---------- Documentos ---------- */
-  async function subir() {
-    if (!archivo) return avisar("Selecciona un archivo", "error");
+  // Sube una tanda de archivos a la carpeta abierta. Las fotos se comprimen
+  // en el dispositivo antes de viajar: es lo que hace viable cargar desde el
+  // celular con datos moviles.
+  async function subirLote(archivos, extras = {}) {
+    const lista = [...archivos].filter(Boolean);
+    if (!lista.length) return;
     setSubiendo(true);
+    let subidos = 0;
     try {
-      const fd = new FormData();
-      fd.set("ambito", ambito);
-      fd.set("section", form.section);
-      fd.set("title", form.title || archivo.name);
-      fd.set("description", form.description || "");
-      if (carpeta) fd.set("folderId", carpeta);
-      fd.set("file", archivo);
-      await enviarForm(`/api/gc/contracts/${contratoId}/documents`, "POST", fd);
-      avisar(carpeta ? `Documento cargado en «${carpetaPorId(carpeta)?.name}»` : "Documento cargado");
-      setDrawer(false); setArchivo(null); setForm({ section: "soporte", title: "", description: "" });
+      for (let i = 0; i < lista.length; i++) {
+        setProgreso(lista.length > 1 ? `${i + 1} de ${lista.length}` : null);
+        const listo = await prepararArchivo(lista[i]);
+        const fd = new FormData();
+        fd.set("ambito", ambito);
+        fd.set("section", extras.section || (esEvidencias ? "evidencia" : "soporte"));
+        fd.set("title", (lista.length === 1 && extras.title) || listo.name);
+        if (extras.description) fd.set("description", extras.description);
+        if (carpeta) fd.set("folderId", carpeta);
+        fd.set("file", listo);
+        await enviarForm(`/api/gc/contracts/${contratoId}/documents`, "POST", fd);
+        subidos++;
+      }
+      avisar(subidos === 1
+        ? (carpeta ? `Cargado en «${carpetaPorId(carpeta)?.name}»` : `${esEvidencias ? "Evidencia cargada" : "Documento cargado"}`)
+        : `${subidos} archivo(s) cargados`);
       cargar();
-    } catch (e) { avisar(e.message, "error"); } finally { setSubiendo(false); }
+    } catch (e) {
+      avisar(subidos ? `${e.message} (se cargaron ${subidos} de ${lista.length})` : e.message, "error");
+      if (subidos) cargar();
+    } finally { setSubiendo(false); setProgreso(null); }
+  }
+
+  async function subir() {
+    if (!archivo?.length) return avisar("Selecciona al menos un archivo", "error");
+    await subirLote(archivo, form);
+    setDrawer(false); setArchivo(null); setForm({ section: esEvidencias ? "evidencia" : "soporte", title: "", description: "" });
   }
 
   async function mover(doc, destino) {
@@ -170,8 +193,8 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor, a
   return (
     <>
       <div className="gc-split">
-        {/* Árbol de carpetas */}
-        <section className="gc-card">
+        {/* Árbol de carpetas (en móvil se navega por las tarjetas) */}
+        <section className="gc-card gc-arbol">
           <header className="gc-card-title">
             <h3>{esEvidencias ? "Carpetas de evidencias" : "Carpetas"}</h3>
             {puedeSubir && (
@@ -210,15 +233,32 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor, a
             <div className="gc-explorer-actions">
               <BotonExportar contratoId={contratoId} seccion="documentos" filtros={{ carpeta: carpeta || "", ambito }} />
               {puedeSubir && (
-                <>
-                  <button className="gc-chip" onClick={() => { setModalCarpeta({ tipo: "nueva", parentId: carpeta }); setNombreCarpeta(""); }}>
-                    <FolderPlus size={14} /> Nueva carpeta
-                  </button>
-                  <button className="gc-chip" onClick={() => setDrawer(true)}><Upload size={14} /> Cargar {cosa}</button>
-                </>
+                <button className="gc-chip" onClick={() => { setModalCarpeta({ tipo: "nueva", parentId: carpeta }); setNombreCarpeta(""); }}>
+                  <FolderPlus size={14} /> Nueva carpeta
+                </button>
               )}
             </div>
           </header>
+
+          {/* Carga rápida: dos toques desde el celular, directo a la carpeta
+              abierta. La foto sale de la cámara ya comprimida. */}
+          {puedeSubir && (
+            <div className="gc-cargarapida">
+              <label className={`gc-btn primary${subiendo ? " off" : ""}`}>
+                <Camera size={16} /> {progreso ? `Subiendo ${progreso}…` : subiendo ? "Subiendo…" : "Tomar foto"}
+                <input type="file" accept="image/*" capture="environment" hidden disabled={subiendo}
+                  onChange={(e) => { subirLote(e.target.files); e.target.value = ""; }} />
+              </label>
+              <label className={`gc-btn ghost${subiendo ? " off" : ""}`}>
+                <Upload size={16} /> Subir archivos
+                <input type="file" multiple hidden disabled={subiendo}
+                  onChange={(e) => { subirLote(e.target.files); e.target.value = ""; }} />
+              </label>
+              <button className="gc-btn ghost" disabled={subiendo} onClick={() => setDrawer(true)}>
+                <FileText size={16} /> Con detalle
+              </button>
+            </div>
+          )}
 
           {subcarpetas.length > 0 && (
             <>
@@ -286,7 +326,10 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor, a
                     : "Organiza los soportes del contrato en carpetas para encontrarlos con facilidad."}
                 accion={puedeSubir && (
                   <div className="gc-actions" style={{ justifyContent: "center" }}>
-                    <button className="gc-btn primary" onClick={() => setDrawer(true)}><Upload size={15} /> Cargar {cosa}</button>
+                    <label className="gc-btn primary">
+                      <Upload size={15} /> Cargar {cosa}s
+                      <input type="file" multiple hidden onChange={(e) => { subirLote(e.target.files); e.target.value = ""; }} />
+                    </label>
                     <button className="gc-btn ghost" onClick={() => { setModalCarpeta({ tipo: "nueva", parentId: carpeta }); setNombreCarpeta(""); }}>
                       <FolderPlus size={15} /> Nueva carpeta
                     </button>
@@ -303,7 +346,9 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor, a
         onClose={() => setDrawer(false)}
         pie={<>
           <button className="gc-btn ghost" onClick={() => setDrawer(false)}>Cancelar</button>
-          <button className="gc-btn primary" disabled={subiendo || !archivo} onClick={subir}>{subiendo ? "Cargando…" : `Cargar ${cosa}`}</button>
+          <button className="gc-btn primary" disabled={subiendo || !archivo?.length} onClick={subir}>
+            {subiendo ? (progreso ? `Cargando ${progreso}…` : "Cargando…") : `Cargar ${archivo?.length > 1 ? `${archivo.length} archivos` : cosa}`}
+          </button>
         </>}>
         <div className="gc-form">
           <div className="gc-field">
@@ -321,9 +366,10 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor, a
             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Contexto del documento…" />
           </div>
           <div className="gc-field">
-            <label>Archivo *</label>
-            <input ref={input} type="file" onChange={(e) => setArchivo(e.target.files?.[0] || null)} />
-            {archivo && <span className="hint">{archivo.name} · {fmtTam(archivo.size)}</span>}
+            <label>Archivos *</label>
+            <input ref={input} type="file" multiple onChange={(e) => setArchivo([...e.target.files])} />
+            {archivo?.length === 1 && <span className="hint">{archivo[0].name} · {fmtTam(archivo[0].size)}</span>}
+            {archivo?.length > 1 && <span className="hint">{archivo.length} archivos seleccionados{form.title ? " · el título aplica solo si es uno" : ""}</span>}
           </div>
         </div>
       </Drawer>

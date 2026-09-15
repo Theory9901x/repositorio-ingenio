@@ -6,6 +6,7 @@ import {
   Image as ImageIcon, MapPin, Paperclip, Plus, Trash2, Upload, Users,
 } from "lucide-react";
 import { api, enviarForm, enviarJson, urlArchivo } from "./api";
+import { prepararArchivo } from "./imagen";
 import { invalidar, useDatos } from "./cache";
 import { BotonExportar, Cargando, Confirmar, Drawer, IconoArchivo, Vacio, fmtFecha, fmtTam, iniciales } from "./ui";
 
@@ -81,7 +82,7 @@ export default function TabMesas({ contratoId, detalle, avisar, setVisor }) {
       const fd = new FormData();
       fd.set("meetingId", mesa.id);
       fd.set("kind", kind);
-      fd.set("file", archivo);
+      fd.set("file", await prepararArchivo(archivo));
       await enviarForm(`/api/gc/contracts/${contratoId}/meetings`, "PUT", fd);
       avisar(kind === "foto" ? "Fotografía agregada" : "Archivo anexado");
       recargar();

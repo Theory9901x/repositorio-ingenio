@@ -5,6 +5,7 @@ import {
   Check, Download, Eye, FolderOpen, ListChecks, Plus, RefreshCw, ShieldCheck, Trash2, Upload, Users, X,
 } from "lucide-react";
 import { api, enviarForm, enviarJson, urlArchivo } from "./api";
+import { prepararArchivo } from "./imagen";
 import TabDocumentos from "./TabDocumentos";
 import { invalidar, sembrar, useDatos } from "./cache";
 import { BotonExportar, Anillo, Cargando, Confirmar, Drawer, Estado, IconoArchivo, Vacio, fmtFecha, fmtFechaHora, fmtTam, iniciales } from "./ui";
@@ -89,7 +90,7 @@ export default function TabEvidencias({ contratoId, detalle, avisar, setVisor, r
       fd.set("requirementId", drawerCarga.id);
       fd.set("userId", seleccion);
       if (drawerCarga.frequency === "mensual") fd.set("period", new Date().toISOString().slice(0, 7));
-      fd.set("file", archivo);
+      fd.set("file", await prepararArchivo(archivo));
       await enviarForm(`/api/gc/contracts/${contratoId}/evidences`, "POST", fd);
       avisar("Evidencia cargada. Queda pendiente de validación.");
       setDrawerCarga(null); setArchivo(null); cargar();

@@ -3,7 +3,7 @@ import { guardarArchivo, borrarArchivo, FileError } from "@/lib/gc/files";
 
 export const dynamic = "force-dynamic";
 
-const SECCIONES = ["contratacion", "cronograma", "plan_trabajo", "acta", "formato", "soporte", "cuenta_cobro", "ejecucion", "evidencia"];
+const SECCIONES = ["contratacion", "cronograma", "plan_trabajo", "acta", "formato", "soporte", "cuenta_cobro", "ejecucion", "evidencia", "notificacion"];
 
 const ambitoDe = (req) => (new URL(req.url).searchParams.get("ambito") === "evidencias" ? "evidencias" : "documentos");
 
