@@ -16,7 +16,12 @@ const SECCIONES = [
 ];
 const COLUMNAS = "minmax(0,1fr) 140px 80px 120px 110px";
 
-export default function TabDocumentos({ contratoId, detalle, avisar, setVisor }) {
+// El mismo explorador sirve a dos espacios: los documentos del contrato
+// (ambito "documentos") y las evidencias generales (ambito "evidencias"),
+// un espacio comun donde cualquiera del contrato consulta y carga.
+export default function TabDocumentos({ contratoId, detalle, avisar, setVisor, ambito = "documentos" }) {
+  const esEvidencias = ambito === "evidencias";
+  const cosa = esEvidencias ? "evidencia" : "documento";
   const [carpeta, setCarpeta] = useState(null);   // carpeta abierta (null = raíz)
   const [abiertas, setAbiertas] = useState({});
   const [drawer, setDrawer] = useState(false);
@@ -30,9 +35,9 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor })
   const input = useRef(null);
 
   const { datos: docsRaw, refrescar: refDocs } = useDatos(
-    `/api/gc/contracts/${contratoId}/documents`, { onError: (e) => avisar(e.message, "error") });
+    `/api/gc/contracts/${contratoId}/documents?ambito=${ambito}`, { onError: (e) => avisar(e.message, "error") });
   const { datos: carpetasRaw, refrescar: refCarpetas } = useDatos(
-    `/api/gc/contracts/${contratoId}/folders`, { onError: (e) => avisar(e.message, "error") });
+    `/api/gc/contracts/${contratoId}/folders?ambito=${ambito}`, { onError: (e) => avisar(e.message, "error") });
   // Si el servidor devolviera algo que no es una lista, la pestaña no debe romperse.
   const docs = Array.isArray(docsRaw) ? docsRaw : docsRaw ? [] : null;
   const carpetas = Array.isArray(carpetasRaw) ? carpetasRaw : carpetasRaw ? [] : null;
@@ -69,7 +74,7 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor })
         await enviarJson(`/api/gc/contracts/${contratoId}/folders`, "PUT", { id: modalCarpeta.id, name: nombre });
         avisar("Carpeta renombrada");
       } else {
-        await enviarJson(`/api/gc/contracts/${contratoId}/folders`, "POST", { name: nombre, parent_id: modalCarpeta.parentId });
+        await enviarJson(`/api/gc/contracts/${contratoId}/folders`, "POST", { name: nombre, parent_id: modalCarpeta.parentId, ambito });
         avisar("Carpeta creada");
       }
       setModalCarpeta(null); setNombreCarpeta(""); cargar();
@@ -91,6 +96,7 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor })
     setSubiendo(true);
     try {
       const fd = new FormData();
+      fd.set("ambito", ambito);
       fd.set("section", form.section);
       fd.set("title", form.title || archivo.name);
       fd.set("description", form.description || "");
@@ -123,6 +129,7 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor })
 
   const puedeSubir = detalle.permisos.includes("DOCUMENT_UPLOAD");
   const puedeBorrarCarpeta = detalle.rol !== "TRABAJADOR";
+  const puedeBorrarDoc = (d) => detalle.rol !== "TRABAJADOR" || Number(d.uploaded_by) === Number(detalle.yo.id);
   const enCarpeta = docs.filter((d) => (d.folder_id || null) === carpeta);
   const subcarpetas = hijasDe(carpeta);
   const sinCarpeta = docs.filter((d) => !d.folder_id).length;
@@ -166,7 +173,7 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor })
         {/* Árbol de carpetas */}
         <section className="gc-card">
           <header className="gc-card-title">
-            <h3>Carpetas</h3>
+            <h3>{esEvidencias ? "Carpetas de evidencias" : "Carpetas"}</h3>
             {puedeSubir && (
               <button className="gc-addfolder" title="Nueva carpeta"
                 onClick={() => { setModalCarpeta({ tipo: "nueva", parentId: null }); setNombreCarpeta(""); }}>
@@ -178,7 +185,7 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor })
             <div className={`gc-tree-row ${carpeta === null ? "on" : ""}`} onClick={() => setCarpeta(null)}>
               <span className="gc-tree-caret"><i /></span>
               <Home size={15} />
-              <span className="gc-tree-name">Todos los documentos</span>
+              <span className="gc-tree-name">{esEvidencias ? "Todas las evidencias" : "Todos los documentos"}</span>
               <span className="gc-tree-count">{docs.length}</span>
             </div>
             {hijasDe(null).map((c) => <Rama key={c.id} c={c} />)}
@@ -192,7 +199,7 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor })
         <section className="gc-card flush">
           <header className="gc-explorer-head">
             <nav className="gc-crumb">
-              <button onClick={() => setCarpeta(null)}><Home size={13} /> Documentos</button>
+              <button onClick={() => setCarpeta(null)}><Home size={13} /> {esEvidencias ? "Evidencias generales" : "Documentos"}</button>
               {ruta.map((c, i) => (
                 <span key={c.id} style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <ChevronRight size={12} />
@@ -201,13 +208,13 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor })
               ))}
             </nav>
             <div className="gc-explorer-actions">
-              <BotonExportar contratoId={contratoId} seccion="documentos" filtros={{ carpeta: carpeta || "" }} />
+              <BotonExportar contratoId={contratoId} seccion="documentos" filtros={{ carpeta: carpeta || "", ambito }} />
               {puedeSubir && (
                 <>
                   <button className="gc-chip" onClick={() => { setModalCarpeta({ tipo: "nueva", parentId: carpeta }); setNombreCarpeta(""); }}>
                     <FolderPlus size={14} /> Nueva carpeta
                   </button>
-                  <button className="gc-chip" onClick={() => setDrawer(true)}><Upload size={14} /> Cargar documento</button>
+                  <button className="gc-chip" onClick={() => setDrawer(true)}><Upload size={14} /> Cargar {cosa}</button>
                 </>
               )}
             </div>
@@ -229,7 +236,7 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor })
           )}
 
           <p className="gc-explorer-sub">
-            {carpeta ? `Documentos en «${carpetaPorId(carpeta)?.name}»` : "Documentos sin clasificar"}
+            {carpeta ? `${esEvidencias ? "Evidencias" : "Documentos"} en «${carpetaPorId(carpeta)?.name}»` : `${esEvidencias ? "Evidencias" : "Documentos"} sin clasificar`}
           </p>
 
           {enCarpeta.length ? (
@@ -261,7 +268,9 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor })
                       <button className="gc-icbtn" title="Mover a otra carpeta" onClick={() => setMoviendo(d)}><MoveRight size={14} /></button>
                     )}
                     <a className="gc-icbtn" title="Descargar" href={urlArchivo("documento", d.id) + "&download=1"} download={d.file_name}><Download size={14} /></a>
-                    <button className="gc-icbtn danger" title="Eliminar" onClick={() => setConfirmar({ tipo: "documento", ...d })}><Trash2 size={14} /></button>
+                    {puedeBorrarDoc(d) && (
+                      <button className="gc-icbtn danger" title="Eliminar" onClick={() => setConfirmar({ tipo: "documento", ...d })}><Trash2 size={14} /></button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -269,13 +278,15 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor })
           ) : (
             <div style={{ padding: 18 }}>
               <Vacio icono={FileText}
-                titulo={carpeta ? "Esta carpeta está vacía" : subcarpetas.length ? "No hay documentos sueltos" : "Aún no hay documentos cargados"}
+                titulo={carpeta ? "Esta carpeta está vacía" : subcarpetas.length ? `No hay ${cosa}s sueltos` : `Aún no hay ${cosa}s cargadas`}
                 texto={carpeta
-                  ? "Carga documentos aquí o crea una subcarpeta para organizarlos mejor."
-                  : "Organiza los soportes del contrato en carpetas para encontrarlos con facilidad."}
+                  ? `Carga ${cosa}s aquí o crea una subcarpeta para organizarlas mejor.`
+                  : esEvidencias
+                    ? "Espacio común del contrato: cualquiera del equipo puede crear carpetas y cargar evidencias aquí."
+                    : "Organiza los soportes del contrato en carpetas para encontrarlos con facilidad."}
                 accion={puedeSubir && (
                   <div className="gc-actions" style={{ justifyContent: "center" }}>
-                    <button className="gc-btn primary" onClick={() => setDrawer(true)}><Upload size={15} /> Cargar documento</button>
+                    <button className="gc-btn primary" onClick={() => setDrawer(true)}><Upload size={15} /> Cargar {cosa}</button>
                     <button className="gc-btn ghost" onClick={() => { setModalCarpeta({ tipo: "nueva", parentId: carpeta }); setNombreCarpeta(""); }}>
                       <FolderPlus size={15} /> Nueva carpeta
                     </button>
@@ -287,12 +298,12 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor })
       </div>
 
       {/* Cargar documento */}
-      <Drawer abierto={drawer} titulo="Cargar documento"
+      <Drawer abierto={drawer} titulo={esEvidencias ? "Cargar evidencia general" : "Cargar documento"}
         subtitulo={carpeta ? `Se guardará en «${carpetaPorId(carpeta)?.name}»` : "Se guardará sin carpeta"}
         onClose={() => setDrawer(false)}
         pie={<>
           <button className="gc-btn ghost" onClick={() => setDrawer(false)}>Cancelar</button>
-          <button className="gc-btn primary" disabled={subiendo || !archivo} onClick={subir}>{subiendo ? "Cargando…" : "Cargar documento"}</button>
+          <button className="gc-btn primary" disabled={subiendo || !archivo} onClick={subir}>{subiendo ? "Cargando…" : `Cargar ${cosa}`}</button>
         </>}>
         <div className="gc-form">
           <div className="gc-field">
@@ -346,6 +357,7 @@ export default function TabDocumentos({ contratoId, detalle, avisar, setVisor })
             <p>
               {modalCarpeta.tipo === "renombrar" ? "Escribe el nuevo nombre."
                 : modalCarpeta.parentId ? `Se creará dentro de «${carpetaPorId(modalCarpeta.parentId)?.name}».`
+                : esEvidencias ? "Se creará en el primer nivel de las evidencias generales."
                 : "Se creará en el primer nivel de documentos del contrato."}
             </p>
             <input autoFocus value={nombreCarpeta} onChange={(e) => setNombreCarpeta(e.target.value)}

@@ -3,7 +3,9 @@ import { contexto, auditar, ROL } from "@/lib/gc/rbac";
 export const dynamic = "force-dynamic";
 
 // Carpetas y subcarpetas de los documentos del contrato.
-export async function GET(_req, { params }) {
+const ambitoDe = (req) => (new URL(req.url).searchParams.get("ambito") === "evidencias" ? "evidencias" : "documentos");
+
+export async function GET(req, { params }) {
   const ctx = await contexto(params.id, "CONTRACT_READ");
   if (ctx.error) return ctx.error;
   const { pool, contractId } = ctx;
@@ -14,8 +16,8 @@ export async function GET(_req, { params }) {
             (SELECT COUNT(*) FROM contract_files cf WHERE cf.folder_id=f.id) AS documentos
        FROM contract_document_folders f
        LEFT JOIN users u ON u.id=f.created_by
-      WHERE f.contract_id=? ORDER BY f.parent_id IS NOT NULL, f.name`,
-    [contractId]
+      WHERE f.contract_id=? AND f.scope=? ORDER BY f.parent_id IS NOT NULL, f.name`,
+    [contractId, ambitoDe(req)]
   );
   return Response.json(rows);
 }
@@ -35,16 +37,17 @@ export async function POST(req, { params }) {
     if (!padre) return Response.json({ error: "La carpeta contenedora no existe" }, { status: 400 });
   }
 
+  const ambito = b.ambito === "evidencias" ? "evidencias" : "documentos";
   const [[dup]] = await pool.query(
     `SELECT id FROM contract_document_folders
-      WHERE contract_id=? AND name=? AND ${parentId ? "parent_id=?" : "parent_id IS NULL"}`,
-    parentId ? [contractId, name, parentId] : [contractId, name]
+      WHERE contract_id=? AND scope=? AND name=? AND ${parentId ? "parent_id=?" : "parent_id IS NULL"}`,
+    parentId ? [contractId, ambito, name, parentId] : [contractId, ambito, name]
   );
   if (dup) return Response.json({ error: "Ya existe una carpeta con ese nombre en este nivel" }, { status: 409 });
 
   const [r] = await pool.query(
-    "INSERT INTO contract_document_folders (contract_id, parent_id, name, description, created_by) VALUES (?,?,?,?,?)",
-    [contractId, parentId, name, (b.description || "").toString().trim() || null, me.id]
+    "INSERT INTO contract_document_folders (contract_id, parent_id, name, description, created_by, scope) VALUES (?,?,?,?,?,?)",
+    [contractId, parentId, name, (b.description || "").toString().trim() || null, me.id, ambito]
   );
   await auditar(pool, { me, contractId, entidad: "folder", entidadId: r.insertId, accion: "FOLDER_CREATED", descripcion: `Carpeta creada: ${name}`, req });
   return Response.json({ ok: true, id: r.insertId });

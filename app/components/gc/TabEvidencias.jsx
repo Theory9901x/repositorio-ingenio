@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  Check, Download, Eye, ListChecks, Plus, RefreshCw, ShieldCheck, Trash2, Upload, Users, X,
+  Check, Download, Eye, FolderOpen, ListChecks, Plus, RefreshCw, ShieldCheck, Trash2, Upload, Users, X,
 } from "lucide-react";
 import { api, enviarForm, enviarJson, urlArchivo } from "./api";
+import TabDocumentos from "./TabDocumentos";
 import { invalidar, sembrar, useDatos } from "./cache";
 import { BotonExportar, Anillo, Cargando, Confirmar, Drawer, Estado, IconoArchivo, Vacio, fmtFecha, fmtFechaHora, fmtTam, iniciales } from "./ui";
 
@@ -13,6 +14,9 @@ const COLUMNAS = "minmax(0,1fr) 130px 150px 120px 120px";
 // Contrato → contratista → checklist → evidencia → validación.
 export default function TabEvidencias({ contratoId, detalle, avisar, setVisor, ruta, ir }) {
   const esTrabajador = detalle.rol === "TRABAJADOR";
+  // Dos espacios: el checklist por contratista y el repositorio comun de
+  // evidencias generales, donde todo el equipo consulta y carga.
+  const [espacio, setEspacio] = useState("checklist");
   const [seleccion, setSeleccion] = useState(esTrabajador ? detalle.yo.id : ruta?.[0] ? Number(ruta[0]) : null);
   const [requisitos, setRequisitos] = useState([]);
   const [drawerReq, setDrawerReq] = useState(null);
@@ -104,15 +108,41 @@ export default function TabEvidencias({ contratoId, detalle, avisar, setVisor, r
   const puedeValidar = detalle.permisos.includes("EVIDENCE_VALIDATE");
   const puedeCargar = detalle.permisos.includes("EVIDENCE_UPLOAD_OWN") || detalle.rol === "ADMIN";
 
-  if (!esTrabajador && !participantes) return <section className="gc-card"><Cargando filas={4} /></section>;
+  const conmutador = (
+    <div className="gc-tabs" style={{ width: "fit-content", marginBottom: 14, padding: 4 }}>
+      <button className={espacio === "checklist" ? "on" : ""} onClick={() => setEspacio("checklist")}
+        style={{ padding: "8px 14px", fontSize: 12 }}>
+        <ShieldCheck size={14} /> Checklist por contratista
+      </button>
+      <button className={espacio === "generales" ? "on" : ""} onClick={() => setEspacio("generales")}
+        style={{ padding: "8px 14px", fontSize: 12 }}>
+        <FolderOpen size={14} /> Evidencias generales
+      </button>
+    </div>
+  );
+
+  // El espacio común funciona aunque el checklist no tenga contratistas.
+  if (espacio === "generales") {
+    return (
+      <>
+        {conmutador}
+        <TabDocumentos contratoId={contratoId} detalle={detalle} avisar={avisar} setVisor={setVisor} ambito="evidencias" />
+      </>
+    );
+  }
+
+  if (!esTrabajador && !participantes) return <>{conmutador}<section className="gc-card"><Cargando filas={4} /></section></>;
 
   // Sin contratistas no hay nada que verificar.
   if (!esTrabajador && participantes.length === 0) {
     return (
-      <section className="gc-card">
-        <Vacio icono={Users} titulo="El contrato no tiene contratistas"
-          texto="Asocia participantes en la pestaña «Contratistas» para llevar su checklist de evidencias." />
-      </section>
+      <>
+        {conmutador}
+        <section className="gc-card">
+          <Vacio icono={Users} titulo="El contrato no tiene contratistas"
+            texto="Asocia participantes en la pestaña «Contratistas» para llevar su checklist de evidencias." />
+        </section>
+      </>
     );
   }
 
@@ -121,6 +151,7 @@ export default function TabEvidencias({ contratoId, detalle, avisar, setVisor, r
 
   return (
     <>
+      {conmutador}
       <div className={esTrabajador ? "" : "gc-split"}>
         {/* Columna izquierda: contratistas */}
         {!esTrabajador && (

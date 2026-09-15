@@ -5,14 +5,19 @@ export const dynamic = "force-dynamic";
 
 const SECCIONES = ["contratacion", "cronograma", "plan_trabajo", "acta", "formato", "soporte", "cuenta_cobro", "ejecucion", "evidencia"];
 
-export async function GET(_req, { params }) {
+const ambitoDe = (req) => (new URL(req.url).searchParams.get("ambito") === "evidencias" ? "evidencias" : "documentos");
+
+export async function GET(req, { params }) {
   const ctx = await contexto(params.id, "CONTRACT_READ");
   if (ctx.error) return ctx.error;
   const { pool, me, rol, contractId } = ctx;
+  const ambito = ambitoDe(req);
 
   // El trabajador ve los documentos generales y los suyos, nunca los de otros.
-  const filtro = rol === ROL.TRABAJADOR ? " AND (f.visibility='general' OR f.owner_user_id=?)" : "";
-  const args = rol === ROL.TRABAJADOR ? [contractId, me.id] : [contractId];
+  // Las evidencias generales son un espacio comun: ahi todos ven todo.
+  const filtro = rol === ROL.TRABAJADOR && ambito !== "evidencias"
+    ? " AND (f.visibility='general' OR f.owner_user_id=?)" : "";
+  const args = filtro ? [contractId, ambito, me.id] : [contractId, ambito];
 
   const [rows] = await pool.query(
     `SELECT f.id, f.contract_id, f.section, f.folder_id, f.title, f.description, f.file_name, f.mime_type,
@@ -22,7 +27,7 @@ export async function GET(_req, { params }) {
        FROM contract_files f
        LEFT JOIN users u ON u.id=f.uploaded_by
        LEFT JOIN users o ON o.id=f.owner_user_id
-      WHERE f.contract_id=?${filtro}
+      WHERE f.contract_id=? AND f.scope=?${filtro}
       ORDER BY f.created_at DESC`,
     args
   );
@@ -39,10 +44,16 @@ export async function POST(req, { params }) {
     const section = SECCIONES.includes(fd.get("section")) ? fd.get("section") : "soporte";
     const title = (fd.get("title") || "").toString().trim();
 
-    // Un trabajador solo sube documentos a su propio nombre.
+    const ambito = fd.get("ambito") === "evidencias" ? "evidencias" : "documentos";
+
+    // Un trabajador solo sube documentos a su propio nombre; en el espacio de
+    // evidencias generales, en cambio, todo lo cargado es comun al contrato.
     let ownerUserId = fd.get("ownerUserId") ? Number(fd.get("ownerUserId")) : null;
     let visibility = (fd.get("visibility") || "general").toString();
-    if (rol === ROL.TRABAJADOR) {
+    if (ambito === "evidencias") {
+      ownerUserId = null;
+      visibility = "general";
+    } else if (rol === ROL.TRABAJADOR) {
       ownerUserId = me.id;
       visibility = "user_evidence";
     }
@@ -55,10 +66,10 @@ export async function POST(req, { params }) {
 
     const guardado = await guardarArchivo(fd.get("file"), `documentos/${contractId}`, me.id);
     const [r] = await pool.query(
-      `INSERT INTO contract_files (contract_id, uploaded_by, section, folder_id, title, description, file_name, file_path, mime_type, size_bytes, visibility, owner_user_id)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO contract_files (contract_id, uploaded_by, section, folder_id, title, description, file_name, file_path, mime_type, size_bytes, visibility, owner_user_id, scope)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [contractId, me.id, section, folderId, title || guardado.file_name, (fd.get("description") || "").toString() || null,
-       guardado.file_name, guardado.file_path, guardado.mime_type, guardado.size_bytes, visibility, ownerUserId]
+       guardado.file_name, guardado.file_path, guardado.mime_type, guardado.size_bytes, visibility, ownerUserId, ambito]
     );
     await auditar(pool, { me, contractId, entidad: "document", entidadId: r.insertId, accion: "FILE_UPLOADED", descripcion: `Documento cargado: ${title || guardado.file_name}`, req });
     return Response.json({ ok: true, id: r.insertId });

@@ -61,6 +61,20 @@ if (SOLO_CLAVES) {
   process.exit(0);
 }
 
+// Modo «rol»: cambia el rol del sistema de una cuenta.
+//   node scripts/gobernacion.mjs rol laura.vega admin
+if (process.argv.includes("rol")) {
+  const idx = process.argv.indexOf("rol");
+  const usuario = process.argv[idx + 1];
+  const rol = process.argv[idx + 2] === "admin" ? "admin" : "usuario";
+  const [[u]] = await db.query("SELECT id, full_name, role FROM users WHERE username=?", [usuario]);
+  if (!u) { console.log("No existe la cuenta", usuario); await db.end(); process.exit(1); }
+  await db.query("UPDATE users SET role=? WHERE id=?", [rol, u.id]);
+  console.log(u.full_name + ": " + u.role + " -> " + rol);
+  await db.end();
+  process.exit(0);
+}
+
 // Modo «revisar»: estado de las cuentas y comprobacion de una contrasena.
 //   node scripts/gobernacion.mjs revisar
 if (process.argv.includes("revisar")) {

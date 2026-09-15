@@ -63,8 +63,10 @@ export async function GET(req, { params }) {
 
   /* ================= Documentos ================= */
   async function armarDocumentos() {
-    const args = [contractId];
-    let sql = "";
+    const ambito = q.get("ambito") === "evidencias" ? "evidencias" : "documentos";
+    if (ambito === "evidencias") doc.filtros.push(["Espacio", "Evidencias generales"]);
+    const args = [contractId, ambito];
+    let sql = " AND f.scope=?";
     if (q.get("carpeta")) { sql += " AND f.folder_id=?"; args.push(Number(q.get("carpeta"))); }
     if (q.get("q")) { sql += " AND (f.title LIKE ? OR f.file_name LIKE ?)"; args.push(`%${q.get("q")}%`, `%${q.get("q")}%`); }
     sql += rango("f.created_at", desde, hasta, args);
